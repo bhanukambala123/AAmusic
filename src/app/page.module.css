@@ -1,0 +1,469 @@
+.container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.greeting {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.searchContainer {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 500px;
+}
+
+.searchInputContainer {
+  position: relative;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+}
+
+.searchInput {
+  width: 100%;
+  padding: 12px 16px 12px 48px;
+  border-radius: 30px;
+  border: 1px solid transparent;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--glass-border);
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.resultsSection {
+  margin-bottom: 40px;
+}
+
+.songList {
+  display: flex;
+  flex-direction: column;
+}
+
+.songRow {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  position: relative;
+  /* Ensure overflow is not hidden to show dropdowns */
+}
+
+.songRow:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.songIndex {
+  width: 32px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rowImage {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  margin-right: 16px;
+  object-fit: cover;
+}
+
+.rowDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.rowTitle {
+  font-size: 16px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.rowArtist {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.rowDuration {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-right: 24px;
+}
+
+.rowActionMenu {
+  margin-right: 52px; /* Space for the absolute play button (36px + 16px) */
+  z-index: 10;
+}
+
+.rowPlayBtn {
+  position: absolute;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--accent-color-gold);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.rowLikeBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  margin-right: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.rowLikeBtn:hover {
+  transform: scale(1.2);
+}
+
+.songRow:hover .rowPlayBtn {
+  opacity: 1;
+}
+
+/* Featured Section */
+.featuredSection {
+  margin-bottom: 40px;
+}
+
+.featuredBanner {
+  border-radius: 16px;
+  padding: 40px;
+  height: 300px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.featuredBanner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+  pointer-events: none;
+}
+
+.featuredContent {
+  position: relative;
+  z-index: 2;
+  max-width: 600px;
+}
+
+.badge {
+  display: inline-block;
+  background-color: var(--accent-color-gold);
+  color: var(--bg-primary);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.featuredTitle {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  line-height: 1.1;
+}
+
+.featuredDesc {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.featuredActions {
+  display: flex;
+  gap: 16px;
+}
+
+.primaryButton {
+  background-color: var(--accent-color-gold);
+  color: var(--bg-primary);
+  padding: 12px 32px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.2s;
+}
+
+.primaryButton:hover {
+  transform: scale(1.05);
+}
+
+.secondaryButton {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 32px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.secondaryButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Sections */
+.section {
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+/* Grid Layouts */
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.songCardSmall {
+  display: flex;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  /* Remove overflow: hidden to allow dropdowns to be visible */
+  transition: background-color 0.3s;
+  cursor: pointer;
+  position: relative;
+}
+
+.songCardSmall:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  z-index: 50; /* Ensure hovered card appears above others */
+}
+
+.songImageSmall {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.songCardDetails {
+  padding: 0 16px;
+  flex: 1;
+}
+
+.cardActions {
+  padding-right: 8px;
+  z-index: 10;
+}
+
+.heartBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.heartBtn:hover {
+  transform: scale(1.1);
+}
+
+.songCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.songCardArtist {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.playOverlay {
+  position: absolute;
+  right: 48px; /* Moved left to avoid overlap with + button */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--accent-color-gold);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+  transform: translateY(10px);
+}
+
+.songCardSmall:hover .playOverlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Album Grid */
+.albumGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 24px;
+}
+
+.albumCard {
+  background-color: rgba(24, 24, 24, 0.5);
+  padding: 16px;
+  border-radius: 8px;
+  transition: background-color 0.3s;
+  cursor: pointer;
+}
+
+.albumCard:hover {
+  background-color: rgba(40, 40, 40, 0.8);
+}
+
+.imageWrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.albumImage {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.albumPlayBtn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--accent-color-gold);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+  transform: translateY(10px);
+}
+
+.albumCard:hover .albumPlayBtn {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.albumTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.albumYear {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .greeting {
+    font-size: 24px;
+  }
+  
+  .featuredBanner {
+    padding: 24px;
+    height: 250px;
+  }
+  
+  .featuredTitle {
+    font-size: 32px;
+  }
+  
+  .gridContainer {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  
+  .songCardSmall {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .songImageSmall {
+    width: 100%;
+    height: 120px;
+  }
+  
+  .songCardDetails {
+    padding: 12px;
+  }
+  
+  .playOverlay {
+    display: none;
+  }
+  
+  .albumGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+}

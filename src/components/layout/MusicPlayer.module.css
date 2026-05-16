@@ -1,0 +1,359 @@
+.playerContainer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--player-height);
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 90; /* below bottom nav on mobile */
+  transition: bottom 0.3s;
+}
+
+.mobilePadding {
+  bottom: var(--bottom-nav-height);
+}
+
+.songInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 30%;
+  min-width: 180px;
+}
+
+.coverArt {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  object-fit: cover;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.songDetails {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.songTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.songArtist {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.playerControls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40%;
+  max-width: 500px;
+}
+
+.mainControls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.controlButton {
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.controlButton:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.activeGold {
+  color: var(--accent-color-gold) !important;
+}
+
+.activeGold:hover {
+  filter: brightness(1.2);
+}
+
+.playButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.playButton:hover {
+  transform: scale(1.05);
+  background-color: var(--accent-color-gold);
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.timeText {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressBar {
+  flex: 1;
+  height: 4px;
+  background-color: var(--bg-hover);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.progressFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--text-primary);
+  border-radius: 2px;
+}
+
+.progressBar:hover .progressFill {
+  background-color: var(--accent-color-gold);
+}
+
+.extraControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  width: 30%;
+  min-width: 150px;
+}
+
+.volumeBar {
+  width: 100px;
+  height: 4px;
+  background-color: var(--bg-hover);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.volumeFill {
+  height: 100%;
+  width: 50%;
+  background-color: var(--text-primary);
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  .playerContainer {
+    height: 60px;
+    padding: 0 8px;
+    margin: 8px;
+    width: calc(100% - 16px);
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  
+  .extraControls, .progressContainer {
+    display: none;
+  }
+  
+  .mainControls {
+    margin-bottom: 0;
+    gap: 12px;
+  }
+  
+  .songInfo {
+    width: auto;
+    flex: 1;
+  }
+  
+  .coverArt {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(var(--player-height) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  animation: slideUpFade 0.3s ease-out forwards;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 200px;
+}
+
+.toastActionBtn {
+  background: none;
+  border: none;
+  color: var(--accent-color-gold);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-left: 1px solid rgba(0,0,0,0.1);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.queueOverlay {
+  position: fixed;
+  bottom: calc(var(--player-height) + 20px);
+  right: 20px;
+  width: 320px;
+  max-height: 500px;
+  background: rgba(24, 24, 24, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  z-index: 150;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.queueHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.queueHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.queueList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.queueItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.activeQueueItem {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.queueImg {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.queueInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.queueTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queueArtist {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emptyQueue {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.queueActionBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.queueItem:hover .queueActionBtn {
+  opacity: 1;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
