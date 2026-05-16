@@ -45,6 +45,7 @@ interface AudioContextType {
   isRepeat: boolean;
   toggleRepeat: () => void;
   toastMessage: string | null;
+  toastAction: { label: string, onClick: () => void } | null;
   showToast: (message: string, action?: { label: string, onClick: () => void }) => void;
   addToQueue: (song: Song) => void;
   queue: Song[];
@@ -66,6 +67,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastAction, setToastAction] = useState<{ label: string, onClick: () => void } | null>(null);
 
   const { user } = useAuth();
 
@@ -279,7 +281,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const [toastAction, setToastAction] = useState<{ label: string, onClick: () => void } | null>(null);
+
 
   const showToast = (message: string, action?: { label: string, onClick: () => void }) => {
     setToastMessage(message);
@@ -287,7 +289,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       setToastMessage(null);
       setToastAction(null);
-    }, 4000);
+    }, 5000);
   };
 
   const addToQueue = (song: Song) => {
