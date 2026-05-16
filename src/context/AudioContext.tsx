@@ -94,7 +94,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const { data: likes, error: likesError } = await supabase
         .from('liked_songs')
         .select('song_id')
-        .eq('user_id', user.id);
+        .eq('user_id', user?.id);
       
       if (likes && !likesError) {
         setLikedSongs(likes.map(l => l.song_id));
@@ -109,7 +109,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             song_id
           )
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user?.id);
 
       if (playlists && !playlistsError) {
         const formattedPlaylists: CustomPlaylist[] = playlists.map(p => ({
@@ -325,7 +325,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase
         .from('liked_songs')
         .delete()
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .eq('song_id', songId);
 
       if (!error) {
@@ -336,7 +336,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       // Add to DB
       const { error } = await supabase
         .from('liked_songs')
-        .insert({ user_id: user.id, song_id: songId });
+        .insert({ user_id: user?.id, song_id: songId });
 
       if (!error) {
         setLikedSongs(prev => [...prev, songId]);
@@ -355,7 +355,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('playlists')
       .insert({
-        user_id: user.id,
+        user_id: user?.id,
         title: title.trim(),
         cover_url: category, // Mapping category to cover_url for now
         is_public: true
