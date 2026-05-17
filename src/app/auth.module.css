@@ -114,3 +114,14 @@
 .link:hover {
   color: var(--accent-color-gold);
 }
+
+@media (max-width: 480px) {
+  .authCard {
+    padding: 28px 20px;
+    border-radius: 8px;
+  }
+  
+  .title {
+    font-size: 26px;
+  }
+}

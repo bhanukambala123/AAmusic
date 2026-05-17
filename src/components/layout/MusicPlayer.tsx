@@ -75,6 +75,15 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
 
   return (
     <div className={`${styles.playerContainer} ${isMobile ? styles.mobilePadding : ''}`}>
+      {/* Mobile Top Progress Bar */}
+      {isMobile && (
+        <div className={styles.progressBarMobile} ref={progressRef} onClick={handleProgressClick}>
+          <div className={styles.progressFillMobile} style={{ width: `${progressPercent}%` }}>
+            <div className={styles.progressThumbMobile}></div>
+          </div>
+        </div>
+      )}
+
       {/* Song Info */}
       <div className={styles.songInfo}>
         <img 
@@ -122,6 +131,16 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
           <button className={styles.controlButton} onClick={playNext}>
             <SkipForward size={24} />
           </button>
+
+          {isMobile && (
+            <button 
+              className={styles.controlButton} 
+              onClick={() => setShowQueue(!showQueue)} 
+              style={{ color: showQueue ? 'var(--accent-color-gold)' : 'inherit', marginLeft: '8px' }}
+            >
+              <ListMusic size={20} />
+            </button>
+          )}
           
           {!isMobile && (
             <button 
@@ -140,13 +159,17 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
           )}
         </div>
         
-        <div className={styles.progressContainer}>
-          <span className={styles.timeText}>{formatTime(progress)}</span>
-          <div className={styles.progressBar} ref={progressRef} onClick={handleProgressClick}>
-            <div className={styles.progressFill} style={{ width: `${progressPercent}%` }}></div>
+        {!isMobile && (
+          <div className={styles.progressContainer}>
+            <span className={styles.timeText}>{formatTime(progress)}</span>
+            <div className={styles.progressBar} ref={progressRef} onClick={handleProgressClick}>
+              <div className={styles.progressFill} style={{ width: `${progressPercent}%` }}>
+                <div className={styles.progressThumb}></div>
+              </div>
+            </div>
+            <span className={styles.timeText}>{formatTime(duration)}</span>
           </div>
-          <span className={styles.timeText}>{formatTime(duration)}</span>
-        </div>
+        )}
       </div>
 
       {/* Extra Controls */}
@@ -160,43 +183,43 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
         <div className={styles.volumeBar} ref={volumeRef} onClick={handleVolumeClick}>
           <div className={styles.volumeFill} style={{ width: `${volumePercent}%` }}></div>
         </div>
-
-        {/* Queue Overlay */}
-        {showQueue && (
-          <div className={styles.queueOverlay}>
-            <div className={styles.queueHeader}>
-              <h3>Queue</h3>
-              <button onClick={() => setShowQueue(false)} className={styles.closeBtn}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className={styles.queueList}>
-              {queue.length > 0 ? (
-                queue.map((song, index) => (
-                  <div key={`${song.id}-${index}`} className={`${styles.queueItem} ${currentSong.id === song.id ? styles.activeQueueItem : ''}`}>
-                    <img src={song.image} alt="" className={styles.queueImg} />
-                    <div className={styles.queueInfo}>
-                      <div className={styles.queueTitle}>{song.title}</div>
-                      <div className={styles.queueArtist}>{song.artist}</div>
-                    </div>
-                    <div className={styles.queueActions}>
-                      <button 
-                        onClick={() => removeFromQueue(index)} 
-                        className={styles.queueActionBtn}
-                        style={{ color: '#ff4444' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className={styles.emptyQueue}>Queue is empty</div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Queue Overlay (Relocated to top-level for mobile display) */}
+      {showQueue && (
+        <div className={styles.queueOverlay}>
+          <div className={styles.queueHeader}>
+            <h3>Queue</h3>
+            <button onClick={() => setShowQueue(false)} className={styles.closeBtn}>
+              <X size={20} />
+            </button>
+          </div>
+          <div className={styles.queueList}>
+            {queue.length > 0 ? (
+              queue.map((song, index) => (
+                <div key={`${song.id}-${index}`} className={`${styles.queueItem} ${currentSong.id === song.id ? styles.activeQueueItem : ''}`}>
+                  <img src={song.image} alt="" className={styles.queueImg} />
+                  <div className={styles.queueInfo}>
+                    <div className={styles.queueTitle}>{song.title}</div>
+                    <div className={styles.queueArtist}>{song.artist}</div>
+                  </div>
+                  <div className={styles.queueActions}>
+                    <button 
+                      onClick={() => removeFromQueue(index)} 
+                      className={styles.queueActionBtn}
+                      style={{ color: '#ff4444' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className={styles.emptyQueue}>Queue is empty</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

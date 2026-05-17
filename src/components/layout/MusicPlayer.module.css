@@ -122,7 +122,6 @@
   border-radius: 2px;
   position: relative;
   cursor: pointer;
-  overflow: hidden;
 }
 
 .progressFill {
@@ -132,10 +131,66 @@
   height: 100%;
   background-color: var(--text-primary);
   border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.progressThumb {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--accent-color-gold);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.progressBar:hover .progressThumb {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
 }
 
 .progressBar:hover .progressFill {
   background-color: var(--accent-color-gold);
+}
+
+/* Mobile Progress Bar Styles */
+.progressBarMobile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  z-index: 10;
+}
+
+.progressFillMobile {
+  height: 100%;
+  background-color: var(--accent-color-gold);
+  border-top-left-radius: 8px;
+  position: relative;
+  transition: width 0.1s linear;
+}
+
+.progressThumbMobile {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--accent-color-gold);
 }
 
 .extraControls {
@@ -164,13 +219,24 @@
 
 @media (max-width: 768px) {
   .playerContainer {
-    height: 60px;
-    padding: 0 8px;
-    margin: 8px;
-    width: calc(100% - 16px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: calc(var(--bottom-nav-height) + 8px);
+    height: 64px;
+    padding: 0 12px;
+    margin: 0;
     border-radius: 8px;
     border: none;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    background-color: rgba(18, 18, 18, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 99;
+  }
+  
+  .mobilePadding {
+    bottom: calc(var(--bottom-nav-height) + 8px) !important;
   }
   
   .extraControls, .progressContainer {
@@ -190,6 +256,28 @@
   .coverArt {
     width: 40px;
     height: 40px;
+  }
+
+  .queueOverlay {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    bottom: calc(var(--bottom-nav-height) + 80px);
+    max-height: 55vh;
+    z-index: 1000;
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

@@ -69,19 +69,24 @@ export default function ActionMenu({ song, isLiked, className }: ActionMenuProps
             className={styles.menuItem} 
             onMouseEnter={() => setShowPlaylists(true)}
             onMouseLeave={() => setShowPlaylists(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPlaylists(!showPlaylists);
+            }}
           >
             <ListPlus size={16} />
             <span>Add to Playlist</span>
             <ChevronRight size={14} className={styles.chevron} />
 
             {showPlaylists && (
-              <div className={styles.subMenu}>
+              <div className={styles.subMenu} onClick={(e) => e.stopPropagation()}>
                 {customPlaylists.length > 0 ? (
                   customPlaylists.map(playlist => (
                     <button 
                       key={playlist.id} 
                       className={styles.subMenuItem}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         addSongToPlaylist(playlist.id, songId);
                         setIsOpen(false);
                         setShowPlaylists(false);
