@@ -73,9 +73,13 @@ CREATE POLICY "Users can update own profile." ON public.profiles FOR UPDATE USIN
 
 CREATE POLICY "Albums are viewable by everyone." ON public.albums FOR SELECT USING (true);
 CREATE POLICY "Allow public inserts on albums" ON public.albums FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public updates on albums" ON public.albums FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public deletes on albums" ON public.albums FOR DELETE USING (true);
 
 CREATE POLICY "Songs are viewable by everyone." ON public.songs FOR SELECT USING (true);
 CREATE POLICY "Allow public inserts on songs" ON public.songs FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public updates on songs" ON public.songs FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public deletes on songs" ON public.songs FOR DELETE USING (true);
 
 CREATE POLICY "Playlists are viewable by everyone if public." ON public.playlists FOR SELECT USING (is_public = true OR auth.uid() = user_id);
 CREATE POLICY "Users can create playlists." ON public.playlists FOR INSERT WITH CHECK (auth.uid() = user_id);

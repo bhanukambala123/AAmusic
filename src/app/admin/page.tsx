@@ -77,11 +77,17 @@ export default function AdminDashboard() {
       console.log("Updating album with data:", albumData);
 
       if (editingAlbumId) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('albums')
           .update(albumData)
-          .eq('id', editingAlbumId);
+          .eq('id', editingAlbumId)
+          .select();
         if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          throw new Error("Updating was blocked by Row Level Security (RLS). Please execute the 'Allow public updates on albums' policy in your Supabase SQL Editor.");
+        }
+        
         setMessage('Album updated successfully!');
       } else {
         const { error } = await supabase

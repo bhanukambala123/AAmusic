@@ -118,11 +118,38 @@ export default function Home() {
     else setGreeting("Good Evening");
   }, []);
 
-  const handlePlayFeatured = () => {
-    // If we want to play an album, we'd filter songs by album_id. 
-    // For now, just play all songs if featured play is clicked.
-    if (songs.length > 0) {
-      playPlaylist(songs);
+  const handlePlayFeatured = async () => {
+    if (!featuredAlbum) return;
+
+    try {
+      const { data: albumSongsData } = await supabase
+        .from('songs')
+        .select(`
+          id, title, artist, duration, audio_url, cover_url, album_id,
+          albums ( title, cover_url )
+        `)
+        .eq('album_id', featuredAlbum.id)
+        .order('created_at', { ascending: true });
+
+      if (albumSongsData && albumSongsData.length > 0) {
+        const formatted: Song[] = albumSongsData.map((song: any) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          duration: song.duration,
+          audio_url: song.audio_url,
+          url: song.audio_url,
+          albumTitle: song.albums?.title,
+          image: song.cover_url || song.albums?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150"
+        }));
+        playPlaylist(formatted);
+      } else {
+        if (songs.length > 0) {
+          playPlaylist(songs);
+        }
+      }
+    } catch (err) {
+      console.error("Error playing featured album:", err);
     }
   };
 
@@ -185,7 +212,15 @@ export default function Home() {
             className={styles.featuredBanner} 
             style={{ 
               backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%), url(${currentSong.image})`,
-              animation: 'fadeIn 0.5s ease-out'
+              animation: 'fadeIn 0.5s ease-out',
+              cursor: 'pointer'
+            }}
+            onClick={(e) => {
+              const target = e.target as HTMLElement;
+              if (target.closest('button') || target.closest('a')) {
+                return;
+              }
+              window.dispatchEvent(new CustomEvent('openFullScreenPlayer'));
             }}
           >
             <div className={styles.featuredContent}>

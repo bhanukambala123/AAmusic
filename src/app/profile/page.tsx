@@ -1,17 +1,70 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Settings, Disc, Shield, Music, Heart } from "lucide-react";
+import { User, LogOut, Settings, Disc, Shield, Music, Heart, Upload } from "lucide-react";
 import styles from "./profile.module.css";
 import { useAuth } from "@/context/AuthContext";
 import { useAudio } from "@/context/AudioContext";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, signOut, username, role } = useAuth();
-  const { likedSongs, customPlaylists } = useAudio();
+  const { user, signOut, username, role, avatarUrl, updateAvatarUrl } = useAuth();
+  const { likedSongs, customPlaylists, showToast } = useAudio();
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image size should be less than 5MB");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 150;
+          canvas.height = 150;
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            const size = Math.min(img.width, img.height);
+            const sx = (img.width - size) / 2;
+            const sy = (img.height - size) / 2;
+            ctx.drawImage(img, sx, sy, size, size, 0, 0, 150, 150);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const success = await updateAvatarUrl(dataUrl);
+            if (success) {
+              showToast("Profile photo uploaded successfully!");
+            } else {
+              showToast("Failed to upload profile photo");
+            }
+          } else {
+            showToast("Canvas drawing error");
+          }
+          setUploading(false);
+        };
+        img.onerror = () => {
+          showToast("Failed to load image file");
+          setUploading(false);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      showToast("Error processing image");
+      setUploading(false);
+    }
+  };
 
   const handleLogOut = async () => {
     await signOut();
@@ -27,8 +80,14 @@ export default function ProfilePage() {
       {user ? (
         <div className={styles.profileCard}>
           <div className={styles.avatarSection}>
-            <div className={styles.avatar}>
-              <User size={48} />
+            <div className={styles.avatar} style={{ overflow: 'hidden', border: '2px solid var(--accent-color-gold)', position: 'relative' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div className={styles.avatarInitial}>
+                  {username ? username.charAt(0).toUpperCase() : 'U'}
+                </div>
+              )}
             </div>
             <div className={styles.info}>
               <h2 className={styles.username}>{username || user.user_metadata?.username || "AA Listener"}</h2>
@@ -60,6 +119,49 @@ export default function ProfilePage() {
               <Disc size={20} className={styles.playlistIcon} />
               <div className={styles.statNumber}>{customPlaylists.length}</div>
               <div className={styles.statLabel}>Playlists</div>
+            </div>
+          </div>
+
+          <div className={styles.avatarSelectionContainer}>
+            <p className={styles.avatarSelectionTitle}>Choose or Upload an Avatar</p>
+            <div className={styles.avatarGrid}>
+              <input
+                type="file"
+                id="avatar-upload"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
+              
+              <button
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+                className={styles.avatarUploadOption}
+                disabled={uploading}
+                title="Upload custom photo"
+              >
+                {uploading ? (
+                  <div className={styles.spinner}></div>
+                ) : (
+                  <Upload size={20} />
+                )}
+              </button>
+
+              {[
+                "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+                "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150",
+                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150",
+                "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&q=80&w=150",
+                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150"
+              ].map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => updateAvatarUrl(url)}
+                  className={`${styles.avatarSelectOption} ${avatarUrl === url ? styles.avatarSelectedOption : ''}`}
+                  aria-label={`Select Avatar ${idx + 1}`}
+                >
+                  <img src={url} alt={`Option ${idx + 1}`} className={styles.avatarOptionImg} />
+                </button>
+              ))}
             </div>
           </div>
 

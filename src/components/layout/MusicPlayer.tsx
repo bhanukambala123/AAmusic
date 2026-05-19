@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, Mic2, Heart, Plus, ListMusic, X, Trash2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, Mic2, Heart, Plus, ListMusic, X, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import styles from './MusicPlayer.module.css';
 import { useAudio } from '@/context/AudioContext';
 import ActionMenu from '../common/ActionMenu';
@@ -42,12 +42,21 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
   } = useAudio();
 
   const [showQueue, setShowQueue] = useState(false);
+  const [showFullScreen, setShowFullScreen] = useState(false);
 
   useEffect(() => {
     const handleToggle = () => setShowQueue(true);
     window.addEventListener('toggleQueue', handleToggle);
     return () => window.removeEventListener('toggleQueue', handleToggle);
   }, []);
+
+  useEffect(() => {
+    const handleOpenFS = () => {
+      if (isMobile) setShowFullScreen(true);
+    };
+    window.addEventListener('openFullScreenPlayer', handleOpenFS);
+    return () => window.removeEventListener('openFullScreenPlayer', handleOpenFS);
+  }, [isMobile]);
 
   const progressRef = useRef<HTMLDivElement>(null);
   const volumeRef = useRef<HTMLDivElement>(null);
@@ -74,10 +83,25 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
   const volumePercent = volume * 100;
 
   return (
-    <div className={`${styles.playerContainer} ${isMobile ? styles.mobilePadding : ''}`}>
+    <div 
+      className={`${styles.playerContainer} ${isMobile ? styles.mobilePadding : ''} ${showFullScreen ? styles.fullScreenActive : ''}`}
+      onClick={() => {
+        if (isMobile && !showFullScreen) {
+          setShowFullScreen(true);
+        }
+      }}
+      style={{ cursor: isMobile && !showFullScreen ? 'pointer' : 'default' }}
+    >
       {/* Mobile Top Progress Bar */}
       {isMobile && (
-        <div className={styles.progressBarMobile} ref={progressRef} onClick={handleProgressClick}>
+        <div 
+          className={styles.progressBarMobile} 
+          ref={progressRef} 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleProgressClick(e);
+          }}
+        >
           <div className={styles.progressFillMobile} style={{ width: `${progressPercent}%` }}>
             <div className={styles.progressThumbMobile}></div>
           </div>
@@ -86,14 +110,22 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
 
       {/* Song Info */}
       <div className={styles.songInfo}>
-        <img 
-          src={currentSong.image || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=150"} 
-          alt="Album Cover" 
-          className={styles.coverArt}
-        />
-        <div className={styles.songDetails}>
-          <div className={`${styles.songTitle} truncate`}>{currentSong.title}</div>
-          <div className={`${styles.songArtist} truncate`}>{currentSong.artist}</div>
+        <div 
+          className={styles.songInfoTrigger} 
+          onClick={() => {
+            if (isMobile) setShowFullScreen(true);
+          }}
+          style={{ cursor: isMobile ? 'pointer' : 'default' }}
+        >
+          <img 
+            src={currentSong.image || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=150"} 
+            alt="Album Cover" 
+            className={styles.coverArt}
+          />
+          <div className={styles.songDetails}>
+            <div className={`${styles.songTitle} truncate`}>{currentSong.title}</div>
+            <div className={`${styles.songArtist} truncate`}>{currentSong.artist}</div>
+          </div>
         </div>
         <ActionMenu song={currentSong} isLiked={isLiked} />
       </div>
@@ -116,26 +148,43 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
               <Shuffle size={18} />
             </button>
           )}
-          
-          <button className={styles.controlButton} onClick={playPrevious}>
+          <button 
+            className={styles.controlButton} 
+            onClick={(e) => {
+              e.stopPropagation();
+              playPrevious();
+            }}
+          >
             <SkipBack size={24} />
           </button>
           
           <button 
             className={styles.playButton} 
-            onClick={togglePlayPause}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlayPause();
+            }}
           >
             {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-1" />}
           </button>
           
-          <button className={styles.controlButton} onClick={playNext}>
+          <button 
+            className={styles.controlButton} 
+            onClick={(e) => {
+              e.stopPropagation();
+              playNext();
+            }}
+          >
             <SkipForward size={24} />
           </button>
 
           {isMobile && (
             <button 
               className={styles.controlButton} 
-              onClick={() => setShowQueue(!showQueue)} 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowQueue(!showQueue);
+              }} 
               style={{ color: showQueue ? 'var(--accent-color-gold)' : 'inherit', marginLeft: '8px' }}
             >
               <ListMusic size={20} />
@@ -217,6 +266,122 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
             ) : (
               <div className={styles.emptyQueue}>Queue is empty</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Full Screen Mobile Player Overlay */}
+      {isMobile && showFullScreen && (
+        <div className={styles.fullScreenPlayer}>
+          {/* Header */}
+          <div className={styles.fsHeader}>
+            <button className={styles.fsCollapseBtn} onClick={() => setShowFullScreen(false)}>
+              <ChevronDown size={28} />
+            </button>
+            <div className={styles.fsHeaderText}>
+              <span className={styles.fsHeaderTitle}>NOW PLAYING</span>
+              {currentSong.albumTitle && <span className={styles.fsHeaderAlbum}>{currentSong.albumTitle}</span>}
+            </div>
+            <button className={styles.fsQueueBtn} onClick={() => {
+              setShowQueue(true);
+              setShowFullScreen(false);
+            }}>
+              <ListMusic size={20} />
+            </button>
+          </div>
+
+          {/* Cover Art */}
+          <div className={styles.fsCoverContainer}>
+            <img 
+              src={currentSong.image || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=400"} 
+              alt="Album Cover" 
+              className={styles.fsCoverArt}
+            />
+          </div>
+
+          {/* Song Info */}
+          <div className={styles.fsSongInfo}>
+            <div className={styles.fsSongDetails}>
+              <h2 className={styles.fsSongTitle}>{currentSong.title}</h2>
+              <p className={styles.fsSongArtist}>{currentSong.artist}</p>
+            </div>
+            <div className={styles.fsSongActions}>
+              <button 
+                className={`${styles.fsActionBtn} ${isLiked ? styles.fsLikedActive : ''}`}
+                onClick={() => toggleLikedSong(currentSong.id.toString())}
+              >
+                <Heart size={24} fill={isLiked ? "#ff4444" : "none"} />
+              </button>
+              <div className={styles.fsActionMenuWrapper}>
+                <ActionMenu song={currentSong} isLiked={isLiked} />
+              </div>
+            </div>
+          </div>
+
+          {/* Seek Bar */}
+          <div className={styles.fsProgressSection}>
+            <div className={styles.fsProgressBarContainer} ref={progressRef} onClick={handleProgressClick}>
+              <div className={styles.fsProgressBar}>
+                <div className={styles.fsProgressFill} style={{ width: `${progressPercent}%` }}>
+                  <div className={styles.fsProgressThumb}></div>
+                </div>
+              </div>
+            </div>
+            <div className={styles.fsTimeRow}>
+              <span>{formatTime(progress)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className={styles.fsControlsSection}>
+            <button 
+              className={`${styles.fsControlBtn} ${isShuffle ? styles.activeGold : ''}`} 
+              onClick={() => {
+                if (isRepeat) {
+                  showToast("Cannot use shuffle while repeat is active");
+                } else {
+                  toggleShuffle();
+                  showToast(isShuffle ? "Shuffle deactivated" : "Shuffle activated");
+                }
+              }}
+            >
+              <Shuffle size={22} />
+            </button>
+
+            <button className={styles.fsControlBtn} onClick={playPrevious}>
+              <SkipBack size={30} fill="currentColor" />
+            </button>
+
+            <button 
+              className={styles.fsPlayBtn} 
+              onClick={togglePlayPause}
+            >
+              {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
+            </button>
+
+            <button className={styles.fsControlBtn} onClick={playNext}>
+              <SkipForward size={30} fill="currentColor" />
+            </button>
+
+            <button 
+              className={`${styles.fsControlBtn} ${isRepeat ? styles.activeGold : ''}`} 
+              onClick={() => {
+                if (isShuffle) {
+                  showToast("Cannot use repeat while shuffle is active");
+                } else {
+                  toggleRepeat();
+                  showToast(isRepeat ? "Repeat deactivated" : "Repeat activated");
+                }
+              }}
+            >
+              <Repeat size={22} />
+            </button>
+          </div>
+          
+          {/* Subtle branding */}
+          <div className={styles.fsBranding}>
+            AA<span>music</span>
           </div>
         </div>
       )}

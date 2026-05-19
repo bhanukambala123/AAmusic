@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, User } from "lucide-react";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
 import MusicPlayer from "./MusicPlayer";
@@ -18,7 +18,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [showSplash, setShowSplash] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
   const pathname = usePathname();
-  const { user, role } = useAuth();
+  const { user, role, avatarUrl, username } = useAuth();
 
   useEffect(() => {
     // Skip loader on first mount (splash screen handles it)
@@ -54,8 +54,39 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <div className={styles.layout}>
         {!isMobile && <Sidebar />}
         
+        {isMobile && (
+          <header className={styles.mobileHeader}>
+            {user ? (
+              <Link href="/profile" className={styles.mobileProfileBtn}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile" className={styles.mobileProfilePhoto} />
+                ) : (
+                  <div className={styles.mobileProfileAvatar}>
+                    {username ? username.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <Link href="/login" className={styles.mobileLoginBtn}>
+                Log In
+              </Link>
+            )}
+            
+            <Link href="/" className={styles.mobileLogo}>
+              AA<span>music</span>
+            </Link>
+            {user && role === 'admin' && pathname !== '/admin' ? (
+              <Link href="/admin" className={styles.mobileAdminBtn}>
+                <Settings size={20} />
+              </Link>
+            ) : (
+              <div style={{ width: 40 }}></div>
+            )}
+          </header>
+        )}
+        
         <main className={styles.mainContent}>
-          {user && role === 'admin' && pathname !== '/admin' && (
+          {!isMobile && user && role === 'admin' && pathname !== '/admin' && (
             <Link href="/admin" className={styles.fixedAdminLink}>
               <Settings size={20} />
             </Link>
