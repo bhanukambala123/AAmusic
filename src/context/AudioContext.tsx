@@ -56,13 +56,19 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 const getAbsoluteArtworkUrl = (url: string) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-    return url;
+  const secureUrl = url.replace(/^http:/i, 'https:');
+  if (secureUrl.startsWith('https://') || secureUrl.startsWith('data:')) {
+    return secureUrl;
   }
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${window.location.origin}${secureUrl.startsWith('/') ? '' : '/'}${secureUrl}`;
   }
-  return url;
+  return secureUrl;
+};
+
+const getSecureUrl = (url: string) => {
+  if (!url) return '';
+  return url.replace(/^http:/i, 'https:');
 };
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
@@ -194,7 +200,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const nextSong = queue[nextIndex];
     if (audioRef.current && nextSong) {
       loadedSongUrlRef.current = nextSong.url;
-      audioRef.current.src = nextSong.url;
+      audioRef.current.src = getSecureUrl(nextSong.url);
       audioRef.current.load();
       audioRef.current.play().catch(e => console.error("Playback prevented in playNext:", e));
     }
@@ -225,7 +231,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     if (audioRef.current && prevSong) {
       loadedSongUrlRef.current = prevSong.url;
-      audioRef.current.src = prevSong.url;
+      audioRef.current.src = getSecureUrl(prevSong.url);
       audioRef.current.load();
       audioRef.current.play().catch(e => console.error("Playback prevented in playPrevious:", e));
     }
@@ -308,7 +314,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       
       if (loadedSongUrlRef.current !== currentSong.url) {
         loadedSongUrlRef.current = currentSong.url;
-        audioRef.current.src = currentSong.url;
+        audioRef.current.src = getSecureUrl(currentSong.url);
         audioRef.current.load();
         if (wasPlaying) {
           audioRef.current.play().catch(e => console.error("Playback prevented:", e));
