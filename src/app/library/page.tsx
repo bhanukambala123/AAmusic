@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { Play, Heart } from "lucide-react";
 import styles from "./library.module.css";
 import { useAudio } from "@/context/AudioContext";
 
 const staticPlaylists = [
-  { id: "liked-songs", title: "Liked Songs", count: "Your likes", image: "/liked-songs.jpg", isLiked: true, route: "/liked-songs" },
+  { id: "liked-songs", title: "Liked Songs", count: "Your likes", image: "https://images.unsplash.com/photo-1513829096999-4978602297a7?auto=format&fit=crop&q=80&w=300", isLiked: true, route: "/liked-songs" },
 ];
 
 export default function Library() {
@@ -20,7 +20,7 @@ export default function Library() {
       id: "liked-songs", 
       title: "Liked Songs", 
       count: `${likedSongs.length} songs`, 
-      image: "/liked-songs.jpg", 
+      image: "https://images.unsplash.com/photo-1513829096999-4978602297a7?auto=format&fit=crop&q=80&w=300", 
       isLiked: true, 
       route: "/liked-songs" 
     },
@@ -62,7 +62,11 @@ export default function Library() {
             const cardContent = (
               <div key={playlist.id} className={styles.card}>
                 <div className={styles.imageWrapper}>
-                  {showLetter ? (
+                  {playlist.id === 'liked-songs' ? (
+                    <div className={`${styles.image} ${styles.likedBg}`}>
+                      <Heart size={40} fill="white" color="white" />
+                    </div>
+                  ) : showLetter ? (
                     <div style={{ 
                       width: '100%', 
                       height: '100%', 

@@ -54,7 +54,7 @@ export default function LikedSongsPage() {
       <section className={styles.featuredSection}>
         <div 
           className={styles.featuredBanner} 
-          style={{ backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%), url(/liked-songs.jpg)` }}
+          style={{ backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%), url(https://images.unsplash.com/photo-1513829096999-4978602297a7?auto=format&fit=crop&q=80&w=800)` }}
         >
           <div className={styles.featuredContent}>
             <span className={styles.badge}>Playlist</span>
