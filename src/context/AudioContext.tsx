@@ -54,6 +54,17 @@ interface AudioContextType {
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
+const getAbsoluteArtworkUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+  return url;
+};
+
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
@@ -73,6 +84,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playNextRef = useRef<() => void>(() => {});
+  const loadedSongUrlRef = useRef<string | null>(null);
 
   // Fetch data from Supabase when user changes
   useEffect(() => {
@@ -179,8 +191,47 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       nextIndex = (currentIndex + 1) % queue.length;
     }
 
+    const nextSong = queue[nextIndex];
+    if (audioRef.current && nextSong) {
+      loadedSongUrlRef.current = nextSong.url;
+      audioRef.current.src = nextSong.url;
+      audioRef.current.load();
+      audioRef.current.play().catch(e => console.error("Playback prevented in playNext:", e));
+    }
+
     setCurrentIndex(nextIndex);
-    setCurrentSong(queue[nextIndex]);
+    setCurrentSong(nextSong);
+    setIsPlaying(true);
+  };
+
+  const playPrevious = () => {
+    if (queue.length === 0) return;
+
+    if (isRepeat) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(e => console.error("Playback prevented:", e));
+      }
+      return;
+    }
+
+    // If more than 3 seconds in, just restart the song
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      return;
+    }
+    const prevIndex = currentIndex === 0 ? queue.length - 1 : currentIndex - 1;
+    const prevSong = queue[prevIndex];
+
+    if (audioRef.current && prevSong) {
+      loadedSongUrlRef.current = prevSong.url;
+      audioRef.current.src = prevSong.url;
+      audioRef.current.load();
+      audioRef.current.play().catch(e => console.error("Playback prevented in playPrevious:", e));
+    }
+
+    setCurrentIndex(prevIndex);
+    setCurrentSong(prevSong);
     setIsPlaying(true);
   };
 
@@ -197,6 +248,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const handleTimeUpdate = () => {
       setProgress(audio.currentTime);
+      
+      // Update lock screen progress bar periodically
+      if ('mediaSession' in navigator && audio.duration) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration || 0,
+            playbackRate: audio.playbackRate || 1,
+            position: audio.currentTime || 0
+          });
+        } catch (e) {
+          console.error("Error setting Media Session position state:", e);
+        }
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -228,43 +292,86 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         audioRef.current.pause();
       }
     }
+
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      } catch (e) {
+        console.error("Error setting mediaSession playbackState:", e);
+      }
+    }
   }, [isPlaying]);
 
   useEffect(() => {
     if (audioRef.current && currentSong) {
       const wasPlaying = isPlaying || audioRef.current.currentTime > 0;
-      audioRef.current.src = currentSong.url;
-      audioRef.current.load();
-      if (wasPlaying) {
-        audioRef.current.play().catch(e => console.error("Playback prevented:", e));
-        setIsPlaying(true);
+      
+      if (loadedSongUrlRef.current !== currentSong.url) {
+        loadedSongUrlRef.current = currentSong.url;
+        audioRef.current.src = currentSong.url;
+        audioRef.current.load();
+        if (wasPlaying) {
+          audioRef.current.play().catch(e => console.error("Playback prevented:", e));
+          setIsPlaying(true);
+        }
+      }
+
+      // Update Media Session Metadata safely
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator && window.MediaMetadata) {
+        try {
+          const absoluteArtworkUrl = getAbsoluteArtworkUrl(currentSong.image);
+          navigator.mediaSession.metadata = new window.MediaMetadata({
+            title: currentSong.title,
+            artist: currentSong.artist,
+            album: currentSong.albumTitle || 'AAmusic',
+            artwork: absoluteArtworkUrl ? [
+              { src: absoluteArtworkUrl, sizes: '96x96', type: 'image/png' },
+              { src: absoluteArtworkUrl, sizes: '128x128', type: 'image/png' },
+              { src: absoluteArtworkUrl, sizes: '192x192', type: 'image/png' },
+              { src: absoluteArtworkUrl, sizes: '256x256', type: 'image/png' },
+              { src: absoluteArtworkUrl, sizes: '384x384', type: 'image/png' },
+              { src: absoluteArtworkUrl, sizes: '512x512', type: 'image/png' },
+            ] : []
+          });
+        } catch (error) {
+          console.error("Failed to update Media Session metadata:", error);
+        }
       }
     }
   }, [currentSong]);
 
+  // Update Media Session action handlers safely (registering each one independently)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+      const actions: [MediaSessionAction, () => void][] = [
+        ['play', () => setIsPlaying(true)],
+        ['pause', () => setIsPlaying(false)],
+        ['nexttrack', playNext],
+        ['previoustrack', playPrevious]
+      ];
 
+      actions.forEach(([action, handler]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (error) {
+          console.warn(`Media Session action "${action}" is not supported or was blocked:`, error);
+        }
+      });
 
-  const playPrevious = () => {
-    if (queue.length === 0) return;
-
-    if (isRepeat) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.error("Playback prevented:", e));
+      try {
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime !== undefined) {
+            seek(details.seekTime);
+          }
+        });
+      } catch (error) {
+        console.warn('Media Session seekto action is not supported or was blocked:', error);
       }
-      return;
     }
+  }, [playNext, playPrevious]);
 
-    // If more than 3 seconds in, just restart the song
-    if (audioRef.current && audioRef.current.currentTime > 3) {
-      audioRef.current.currentTime = 0;
-      return;
-    }
-    const prevIndex = currentIndex === 0 ? queue.length - 1 : currentIndex - 1;
-    setCurrentIndex(prevIndex);
-    setCurrentSong(queue[prevIndex]);
-    setIsPlaying(true);
-  };
+
+
 
   const seek = (time: number) => {
     if (audioRef.current) {
