@@ -17,8 +17,7 @@ interface Album {
 }
 
 export default function Home() {
-  const { playPlaylist, likedSongs, toggleLikedSong, currentSong, isPlaying, togglePlayPause } = useAudio();
-  const [songs, setSongs] = useState<Song[]>([]);
+  const { playPlaylist, likedSongs, toggleLikedSong, currentSong, isPlaying, togglePlayPause, recentlyPlayed } = useAudio();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [featuredAlbum, setFeaturedAlbum] = useState<Album | null>(null);
   const [query, setQuery] = useState("");
@@ -32,32 +31,6 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchData() {
-      // Fetch songs (limit to 100 for performance, then pick 4 random ones in JS)
-      const { data: songsData } = await supabase
-        .from('songs')
-        .select(`
-          id, title, artist, duration, audio_url, cover_url, album_id,
-          albums ( title, cover_url )
-        `)
-        .limit(100);
-      
-      if (songsData && songsData.length > 0) {
-        const randomSongs = [...songsData]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 4);
-
-        const formattedSongs: Song[] = randomSongs.map((song: any) => ({
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          duration: song.duration,
-          audio_url: song.audio_url,
-          url: song.audio_url,
-          albumTitle: song.albums?.title,
-          image: song.cover_url || song.albums?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150"
-        }));
-        setSongs(formattedSongs);
-      }
 
       // Fetch albums (limit to 100 for performance, then pick 4 random ones in JS)
       const { data: albumsData } = await supabase
@@ -293,15 +266,15 @@ export default function Home() {
         )}
       </section>
 
-      {/* Your Uploaded Songs */}
+      {/* Recently Played Songs */}
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Recently Uploaded Songs</h2>
-        {songs.length > 0 ? (
+        <h2 className={styles.sectionTitle}>Recently Played Songs</h2>
+        {recentlyPlayed.length > 0 ? (
           <div className={styles.gridContainer}>
-            {songs.map((song, index) => {
+            {recentlyPlayed.map((song, index) => {
               const isLiked = likedSongs.includes(song.id.toString());
               return (
-                <div key={song.id} className={styles.songCardSmall} onClick={() => playPlaylist(songs, index)}>
+                <div key={song.id} className={styles.songCardSmall} onClick={() => playPlaylist(recentlyPlayed, index)}>
                   <img src={song.image} alt={song.title} className={styles.songImageSmall} />
                   <div className={styles.songCardDetails}>
                     <div className={`${styles.songCardTitle} truncate`}>{song.title}</div>
@@ -318,7 +291,7 @@ export default function Home() {
             })}
           </div>
         ) : (
-          <p style={{ color: 'var(--text-secondary)' }}>No songs added yet. Head to the Admin panel to upload some!</p>
+          <p style={{ color: 'var(--text-secondary)' }}>No recently played songs yet. Start listening to see them here!</p>
         )}
       </section>
 

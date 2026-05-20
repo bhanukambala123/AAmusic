@@ -50,6 +50,7 @@ interface AudioContextType {
   addToQueue: (song: Song) => void;
   queue: Song[];
   removeFromQueue: (index: number) => void;
+  recentlyPlayed: Song[];
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -78,6 +79,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolume] = useState(1);
   const [likedSongs, setLikedSongs] = useState<string[]>([]);
   const [customPlaylists, setCustomPlaylists] = useState<CustomPlaylist[]>([]);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
 
   // Refs and state synchronization to guarantee background play with screen off
   const queueRef = useRef<Song[]>([]);
@@ -209,6 +211,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     fetchData();
   }, [user]);
 
+  const addToRecentlyPlayed = (song: Song) => {
+    setRecentlyPlayed(prev => {
+      const filtered = prev.filter(s => String(s.id) !== String(song.id));
+      return [song, ...filtered].slice(0, 4);
+    });
+  };
+
   const playSong = (song: Song) => {
     if (!user) {
       showToast("Please login to play music");
@@ -218,6 +227,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
     }
+    addToRecentlyPlayed(song);
     setQueue([song]);
     setCurrentIndex(0);
     setCurrentSong(song);
@@ -233,6 +243,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const firstSong = songs[startIndex];
     if (firstSong) {
       updateMediaSessionMetadata(firstSong);
+      addToRecentlyPlayed(firstSong);
     }
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
@@ -644,7 +655,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       addToQueue,
       queue,
       removeFromQueue,
-      toastAction
+      toastAction,
+      recentlyPlayed
     }}>
       {children}
       <audio ref={audioDOMRef} style={{ display: 'none' }} preload="auto" />

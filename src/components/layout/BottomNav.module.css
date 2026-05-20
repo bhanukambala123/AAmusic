@@ -33,6 +33,10 @@
   color: var(--accent-color-gold);
 }
 
+.active:hover {
+  color: var(--accent-color-gold);
+}
+
 /* Modal Styles */
 .modalOverlay {
   position: fixed;

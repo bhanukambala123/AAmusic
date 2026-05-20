@@ -52,6 +52,10 @@
   color: var(--accent-color-gold);
 }
 
+.active:hover {
+  color: var(--accent-color-gold);
+}
+
 .divider {
   height: 1px;
   background-color: var(--bg-tertiary);
