@@ -38,7 +38,7 @@ export default function BottomNav() {
       </Link>
       {user ? (
         <div 
-          className={styles.navItem} 
+          className={`${styles.navItem} ${showModal ? styles.active : ''}`} 
           onClick={() => setShowModal(true)}
           style={{ cursor: 'pointer' }}
         >
@@ -47,7 +47,7 @@ export default function BottomNav() {
         </div>
       ) : (
         <div 
-          className={styles.navItem} 
+          className={`${styles.navItem} ${showModal ? styles.active : ''}`} 
           onClick={() => showToast("Please log in to create playlists")}
           style={{ cursor: 'pointer' }}
         >

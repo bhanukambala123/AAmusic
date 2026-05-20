@@ -33,6 +33,10 @@ export default function Sidebar() {
           <Disc size={24} />
           <span>Albums</span>
         </Link>
+        <Link href="/search" className={`${styles.navItem} ${pathname === '/search' ? styles.active : ''}`}>
+          <Search size={24} />
+          <span>Search</span>
+        </Link>
         <Link href="/library" className={`${styles.navItem} ${pathname === '/library' ? styles.active : ''}`}>
           <Library size={24} />
           <span>Your Library</span>
@@ -41,7 +45,7 @@ export default function Sidebar() {
 
       <nav className={styles.nav}>
         <div 
-          className={styles.navItem} 
+          className={`${styles.navItem} ${showModal ? styles.active : ''}`} 
           onClick={() => setShowModal(true)}
           style={{ cursor: 'pointer' }}
         >

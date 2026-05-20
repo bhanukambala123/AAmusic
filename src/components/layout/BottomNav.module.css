@@ -30,7 +30,7 @@
 }
 
 .active {
-  color: var(--text-primary);
+  color: var(--accent-color-gold);
 }
 
 /* Modal Styles */

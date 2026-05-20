@@ -49,7 +49,7 @@
 
 .active {
   background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+  color: var(--accent-color-gold);
 }
 
 .divider {

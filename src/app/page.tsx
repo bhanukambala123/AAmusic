@@ -32,18 +32,21 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchData() {
-      // Fetch latest songs
+      // Fetch songs (limit to 100 for performance, then pick 4 random ones in JS)
       const { data: songsData } = await supabase
         .from('songs')
         .select(`
           id, title, artist, duration, audio_url, cover_url, album_id,
           albums ( title, cover_url )
         `)
-        .order('created_at', { ascending: false })
-        .limit(6);
+        .limit(100);
       
-      if (songsData) {
-        const formattedSongs: Song[] = songsData.map((song: any) => ({
+      if (songsData && songsData.length > 0) {
+        const randomSongs = [...songsData]
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 4);
+
+        const formattedSongs: Song[] = randomSongs.map((song: any) => ({
           id: song.id,
           title: song.title,
           artist: song.artist,
@@ -56,16 +59,31 @@ export default function Home() {
         setSongs(formattedSongs);
       }
 
-      // Fetch albums
+      // Fetch albums (limit to 100 for performance, then pick 4 random ones in JS)
       const { data: albumsData } = await supabase
         .from('albums')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(100);
 
+      let shuffledAlbums: Album[] = [];
       if (albumsData && albumsData.length > 0) {
-        setAlbums(albumsData);
-        setFeaturedAlbum(albumsData[0]); // Feature the newest album
+        shuffledAlbums = [...albumsData]
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 4);
+        setAlbums(shuffledAlbums);
+      }
+
+      // Fetch featured album titled "Raaka"
+      const { data: featuredData } = await supabase
+        .from('albums')
+        .select('*')
+        .eq('title', 'Raaka')
+        .maybeSingle();
+
+      if (featuredData) {
+        setFeaturedAlbum(featuredData);
+      } else if (shuffledAlbums.length > 0) {
+        setFeaturedAlbum(shuffledAlbums[0]);
       }
     }
     fetchData();

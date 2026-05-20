@@ -15,7 +15,7 @@ import Toast from "../common/Toast";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const pathname = usePathname();
   const { user, role, avatarUrl, username } = useAuth();

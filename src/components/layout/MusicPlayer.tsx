@@ -127,7 +127,6 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
             <div className={`${styles.songArtist} truncate`}>{currentSong.artist}</div>
           </div>
         </div>
-        <ActionMenu song={currentSong} isLiked={isLiked} />
       </div>
 
       {/* Player Controls */}

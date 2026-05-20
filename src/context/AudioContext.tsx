@@ -73,16 +73,57 @@ const getSecureUrl = (url: string) => {
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [queue, setQueue] = useState<Song[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [likedSongs, setLikedSongs] = useState<string[]>([]);
   const [customPlaylists, setCustomPlaylists] = useState<CustomPlaylist[]>([]);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
+
+  // Refs and state synchronization to guarantee background play with screen off
+  const queueRef = useRef<Song[]>([]);
+  const currentIndexRef = useRef<number>(0);
+  const isShuffleRef = useRef<boolean>(false);
+  const isRepeatRef = useRef<boolean>(false);
+  const isPlayingRef = useRef<boolean>(false);
+  const audioDOMRef = useRef<HTMLAudioElement | null>(null);
+
+  const [queue, setQueueState] = useState<Song[]>([]);
+  const setQueue = (newQueueOrFn: Song[] | ((prev: Song[]) => Song[])) => {
+    if (typeof newQueueOrFn === 'function') {
+      setQueueState(prev => {
+        const nextQueue = newQueueOrFn(prev);
+        queueRef.current = nextQueue;
+        return nextQueue;
+      });
+    } else {
+      queueRef.current = newQueueOrFn;
+      setQueueState(newQueueOrFn);
+    }
+  };
+
+  const [currentIndex, setCurrentIndexState] = useState(0);
+  const setCurrentIndex = (index: number) => {
+    currentIndexRef.current = index;
+    setCurrentIndexState(index);
+  };
+
+  const [isShuffle, setIsShuffleState] = useState(false);
+  const setIsShuffle = (val: boolean) => {
+    isShuffleRef.current = val;
+    setIsShuffleState(val);
+  };
+
+  const [isRepeat, setIsRepeatState] = useState(false);
+  const setIsRepeat = (val: boolean) => {
+    isRepeatRef.current = val;
+    setIsRepeatState(val);
+  };
+
+  const [isPlaying, setIsPlayingState] = useState(false);
+  const setIsPlaying = (val: boolean) => {
+    isPlayingRef.current = val;
+    setIsPlayingState(val);
+  };
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastAction, setToastAction] = useState<{ label: string, onClick: () => void } | null>(null);
 
@@ -90,7 +131,31 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playNextRef = useRef<() => void>(() => {});
+  const playPreviousRef = useRef<() => void>(() => {});
   const loadedSongUrlRef = useRef<string | null>(null);
+
+  const updateMediaSessionMetadata = (song: Song) => {
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator && window.MediaMetadata) {
+      try {
+        const absoluteArtworkUrl = getAbsoluteArtworkUrl(song.image);
+        navigator.mediaSession.metadata = new window.MediaMetadata({
+          title: song.title,
+          artist: song.artist,
+          album: song.albumTitle || 'AAmusic',
+          artwork: absoluteArtworkUrl ? [
+            { src: absoluteArtworkUrl, sizes: '96x96', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '128x128', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '192x192', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '256x256', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '384x384', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '512x512', type: 'image/png' },
+          ] : []
+        });
+      } catch (error) {
+        console.error("Failed to update Media Session metadata:", error);
+      }
+    }
+  };
 
   // Fetch data from Supabase when user changes
   useEffect(() => {
@@ -149,6 +214,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       showToast("Please login to play music");
       return;
     }
+    updateMediaSessionMetadata(song);
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
+    }
     setQueue([song]);
     setCurrentIndex(0);
     setCurrentSong(song);
@@ -161,6 +230,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (songs.length === 0) return;
+    const firstSong = songs[startIndex];
+    if (firstSong) {
+      updateMediaSessionMetadata(firstSong);
+    }
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
+    }
     setQueue(songs);
     setCurrentIndex(startIndex);
     setCurrentSong(songs[startIndex]);
@@ -173,35 +249,41 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!currentSong) return;
-    setIsPlaying(prev => !prev);
+    setIsPlaying(!isPlaying);
   };
 
   const playNext = () => {
-    if (queue.length === 0) return;
+    const currentQueue = queueRef.current;
+    if (currentQueue.length === 0) return;
     
     let nextIndex: number;
+    const currentIdx = currentIndexRef.current;
+    const repeat = isRepeatRef.current;
+    const shuffle = isShuffleRef.current;
     
-    if (isRepeat) {
+    if (repeat) {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(e => console.error("Playback prevented:", e));
       }
       return;
-    } else if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * queue.length);
-      // Try to get a different song if there's more than one
-      if (queue.length > 1 && nextIndex === currentIndex) {
-        nextIndex = (nextIndex + 1) % queue.length;
+    } else if (shuffle) {
+      nextIndex = Math.floor(Math.random() * currentQueue.length);
+      if (currentQueue.length > 1 && nextIndex === currentIdx) {
+        nextIndex = (nextIndex + 1) % currentQueue.length;
       }
     } else {
-      nextIndex = (currentIndex + 1) % queue.length;
+      nextIndex = (currentIdx + 1) % currentQueue.length;
     }
 
-    const nextSong = queue[nextIndex];
+    const nextSong = currentQueue[nextIndex];
     if (audioRef.current && nextSong) {
+      updateMediaSessionMetadata(nextSong);
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       loadedSongUrlRef.current = nextSong.url;
       audioRef.current.src = getSecureUrl(nextSong.url);
-      audioRef.current.load();
       audioRef.current.play().catch(e => console.error("Playback prevented in playNext:", e));
     }
 
@@ -211,9 +293,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
 
   const playPrevious = () => {
-    if (queue.length === 0) return;
+    const currentQueue = queueRef.current;
+    if (currentQueue.length === 0) return;
 
-    if (isRepeat) {
+    const repeat = isRepeatRef.current;
+    if (repeat) {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(e => console.error("Playback prevented:", e));
@@ -221,18 +305,21 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // If more than 3 seconds in, just restart the song
     if (audioRef.current && audioRef.current.currentTime > 3) {
       audioRef.current.currentTime = 0;
       return;
     }
-    const prevIndex = currentIndex === 0 ? queue.length - 1 : currentIndex - 1;
-    const prevSong = queue[prevIndex];
+    const currentIdx = currentIndexRef.current;
+    const prevIndex = currentIdx === 0 ? currentQueue.length - 1 : currentIdx - 1;
+    const prevSong = currentQueue[prevIndex];
 
     if (audioRef.current && prevSong) {
+      updateMediaSessionMetadata(prevSong);
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       loadedSongUrlRef.current = prevSong.url;
       audioRef.current.src = getSecureUrl(prevSong.url);
-      audioRef.current.load();
       audioRef.current.play().catch(e => console.error("Playback prevented in playPrevious:", e));
     }
 
@@ -246,9 +333,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [playNext]);
 
   useEffect(() => {
-    // Initialize audio element
-    audioRef.current = new Audio();
+    playPreviousRef.current = playPrevious;
+  }, [playPrevious]);
+
+  useEffect(() => {
+    if (!audioDOMRef.current) return;
+
+    // Initialize audio element reference to the DOM element
+    audioRef.current = audioDOMRef.current;
     audioRef.current.volume = volume;
+    audioRef.current.preload = 'auto'; // Support preloading metadata on mobile background
 
     const audio = audioRef.current;
 
@@ -281,11 +375,54 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
 
+    // Register Media Session action handlers ONCE on mount
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+      const actions: [MediaSessionAction, () => void][] = [
+        ['play', () => {
+          setIsPlaying(true);
+          if (audioRef.current) {
+            audioRef.current.play().catch(e => console.error("Playback prevented on lock screen play:", e));
+          }
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
+          }
+        }],
+        ['pause', () => {
+          setIsPlaying(false);
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+          }
+        }],
+        ['nexttrack', () => playNextRef.current()],
+        ['previoustrack', () => playPreviousRef.current()]
+      ];
+
+      actions.forEach(([action, handler]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (error) {
+          console.warn(`Media Session action "${action}" is not supported:`, error);
+        }
+      });
+
+      try {
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime !== undefined) {
+            seek(details.seekTime);
+          }
+        });
+      } catch (error) {
+        console.warn('Media Session seekto is not supported:', error);
+      }
+    }
+
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
-      audio.pause();
     };
   }, []);
 
@@ -323,58 +460,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Update Media Session Metadata safely
-      if (typeof window !== 'undefined' && 'mediaSession' in navigator && window.MediaMetadata) {
-        try {
-          const absoluteArtworkUrl = getAbsoluteArtworkUrl(currentSong.image);
-          navigator.mediaSession.metadata = new window.MediaMetadata({
-            title: currentSong.title,
-            artist: currentSong.artist,
-            album: currentSong.albumTitle || 'AAmusic',
-            artwork: absoluteArtworkUrl ? [
-              { src: absoluteArtworkUrl, sizes: '96x96', type: 'image/png' },
-              { src: absoluteArtworkUrl, sizes: '128x128', type: 'image/png' },
-              { src: absoluteArtworkUrl, sizes: '192x192', type: 'image/png' },
-              { src: absoluteArtworkUrl, sizes: '256x256', type: 'image/png' },
-              { src: absoluteArtworkUrl, sizes: '384x384', type: 'image/png' },
-              { src: absoluteArtworkUrl, sizes: '512x512', type: 'image/png' },
-            ] : []
-          });
-        } catch (error) {
-          console.error("Failed to update Media Session metadata:", error);
-        }
-      }
+      updateMediaSessionMetadata(currentSong);
     }
   }, [currentSong]);
 
-  // Update Media Session action handlers safely (registering each one independently)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-      const actions: [MediaSessionAction, () => void][] = [
-        ['play', () => setIsPlaying(true)],
-        ['pause', () => setIsPlaying(false)],
-        ['nexttrack', playNext],
-        ['previoustrack', playPrevious]
-      ];
-
-      actions.forEach(([action, handler]) => {
-        try {
-          navigator.mediaSession.setActionHandler(action, handler);
-        } catch (error) {
-          console.warn(`Media Session action "${action}" is not supported or was blocked:`, error);
-        }
-      });
-
-      try {
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-          if (details.seekTime !== undefined) {
-            seek(details.seekTime);
-          }
-        });
-      } catch (error) {
-        console.warn('Media Session seekto action is not supported or was blocked:', error);
-      }
-    }
-  }, [playNext, playPrevious]);
+  // Action handlers are safely and efficiently bound once on mount using refs to prevent WebKit listener dropouts.
 
 
 
@@ -523,8 +613,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     showToast(`Added to ${playlist.title}`);
   };
 
-  const toggleShuffle = () => setIsShuffle(prev => !prev);
-  const toggleRepeat = () => setIsRepeat(prev => !prev);
+  const toggleShuffle = () => setIsShuffle(!isShuffle);
+  const toggleRepeat = () => setIsRepeat(!isRepeat);
 
   return (
     <AudioContext.Provider value={{
@@ -557,6 +647,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       toastAction
     }}>
       {children}
+      <audio ref={audioDOMRef} style={{ display: 'none' }} preload="auto" />
     </AudioContext.Provider>
   );
 }
