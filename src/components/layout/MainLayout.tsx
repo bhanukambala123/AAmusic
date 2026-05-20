@@ -43,7 +43,25 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   // Avoid hydration mismatch by waiting for mount
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      const registerSW = () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => console.log("SW registered successfully:", reg))
+          .catch((err) => console.log("SW registration failed:", err));
+      };
+
+      if (document.readyState === "complete") {
+        registerSW();
+      } else {
+        window.addEventListener("load", registerSW);
+        return () => window.removeEventListener("load", registerSW);
+      }
+    }
+  }, []);
   if (!mounted) return null;
 
   return (

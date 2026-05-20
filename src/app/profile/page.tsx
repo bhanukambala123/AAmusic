@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, LogOut, Settings, Disc, Shield, Music, Heart, Upload } from "lucide-react";
@@ -13,6 +13,59 @@ export default function ProfilePage() {
   const { user, signOut, username, role, avatarUrl, updateAvatarUrl } = useAuth();
   const { likedSongs, customPlaylists, showToast } = useAudio();
   const [uploading, setUploading] = useState(false);
+
+  // PWA states and events
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Detect if already in standalone mode
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
+        || (navigator as any).standalone 
+        || document.referrer.includes('android-app://');
+      setIsStandalone(!!isStandaloneMode);
+    };
+
+    // Detect iOS
+    const checkIOS = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+    };
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    checkStandalone();
+    checkIOS();
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    window.addEventListener('appinstalled', () => {
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+      setIsStandalone(true);
+      showToast("AAmusic installed successfully! Launch it from your homescreen.");
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, [showToast]);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User choice: ${outcome}`);
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,6 +129,28 @@ export default function ProfilePage() {
       <header className={styles.header}>
         <h1 className={styles.greeting}>Your Profile</h1>
       </header>
+
+      {/* PWA Install Banner */}
+      {!isStandalone && (isInstallable || isIOS) && (
+        <div className={styles.installBanner}>
+          <div className={styles.installIconContainer}>
+            <img src="/icon-192.png" alt="AAmusic Logo" className={styles.installAppIcon} />
+          </div>
+          <div className={styles.installContent}>
+            <h3 className={styles.installTitle}>Download AAmusic App</h3>
+            <p className={styles.installDesc}>
+              {isIOS 
+                ? "Install AAmusic on your iPhone: tap Safari's Share button, then choose 'Add to Home Screen'." 
+                : "Get our lightweight standalone app for a premium, fullscreen music experience."}
+            </p>
+            {isInstallable && !isIOS && (
+              <button onClick={handleInstallClick} className={styles.installBtn}>
+                Install Now
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {user ? (
         <div className={styles.profileCard}>
