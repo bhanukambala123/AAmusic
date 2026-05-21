@@ -510,6 +510,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       // Update Media Session Metadata safely
       updateMediaSessionMetadata(currentSong);
+      
+      // Auto-add to recently played songs
+      addSongToRecentlyPlayed(currentSong);
     }
   }, [currentSong]);
 

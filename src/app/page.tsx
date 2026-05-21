@@ -22,11 +22,23 @@ export default function Home() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [featuredAlbum, setFeaturedAlbum] = useState<Album | null>(null);
   const [fallbackSongs, setFallbackSongs] = useState<Song[]>([]);
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
 
-  const recentSongs = Array.isArray(recentlyPlayed) && recentlyPlayed.length > 0
-    ? recentlyPlayed.slice(0, 4)
-    : fallbackSongs ?? [];
-  const recentSongsList = Array.isArray(recentSongs) ? recentSongs : [];
+  const recentSongsList = React.useMemo(() => {
+    const list = Array.isArray(recentlyPlayed) ? recentlyPlayed : [];
+    if (list.length === 0) {
+      return fallbackSongs;
+    }
+    // Filter to only include songs that exist in the database catalog (allSongs)
+    const valid = list.filter(song => 
+      allSongs.some(dbSong => String(dbSong.id) === String(song.id))
+    );
+    if (valid.length === 0) {
+      return fallbackSongs;
+    }
+    return valid.slice(0, 4);
+  }, [recentlyPlayed, fallbackSongs, allSongs]);
+
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [searching, setSearching] = useState(false);
@@ -44,11 +56,7 @@ export default function Home() {
         .limit(100);
 
       if (songsData && songsData.length > 0) {
-        const randomSongs = [...songsData]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 4);
-
-        const formattedSongs: Song[] = randomSongs.map((song: any) => ({
+        const formatted: Song[] = songsData.map((song: any) => ({
           id: song.id,
           title: song.title,
           artist: song.artist,
@@ -58,7 +66,12 @@ export default function Home() {
           albumTitle: song.albums?.title,
           image: song.cover_url || song.albums?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150"
         }));
-        setFallbackSongs(formattedSongs);
+        setAllSongs(formatted);
+
+        const randomSongs = [...formatted]
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 4);
+        setFallbackSongs(randomSongs);
       }
 
       const { data: albumsData } = await supabase
@@ -289,7 +302,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* Your Uploaded Songs */}
+      {/* Recently Played Songs */}
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Recently Played Songs</h2>
         {recentSongsList.length > 0 ? (
