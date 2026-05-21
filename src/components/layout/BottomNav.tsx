@@ -17,22 +17,27 @@ export default function BottomNav() {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistCategory, setNewPlaylistCategory] = useState('Love');
 
+  const isHomeActive = pathname === '/';
+  const isAlbumsActive = pathname === '/albums' || (pathname ? pathname.startsWith('/album') : false);
+  const isSearchActive = pathname === '/search';
+  const isLibraryActive = pathname === '/library';
+
   return (
     <>
       <nav className={styles.bottomNav}>
-      <Link href="/" className={`${styles.navItem} ${pathname === '/' ? styles.active : ''}`}>
+      <Link href="/" className={`${styles.navItem} ${isHomeActive ? styles.active : ''}`}>
         <Home size={24} />
         <span>Home</span>
       </Link>
-      <Link href="/albums" className={`${styles.navItem} ${pathname === '/albums' ? styles.active : ''}`}>
+      <Link href="/albums" className={`${styles.navItem} ${isAlbumsActive ? styles.active : ''}`}>
         <Disc size={24} />
         <span>Albums</span>
       </Link>
-      <Link href="/search" className={`${styles.navItem} ${pathname === '/search' ? styles.active : ''}`}>
+      <Link href="/search" className={`${styles.navItem} ${isSearchActive ? styles.active : ''}`}>
         <Search size={24} />
         <span>Search</span>
       </Link>
-      <Link href="/library" className={`${styles.navItem} ${pathname === '/library' ? styles.active : ''}`}>
+      <Link href="/library" className={`${styles.navItem} ${isLibraryActive ? styles.active : ''}`}>
         <Library size={24} />
         <span>Library</span>
       </Link>

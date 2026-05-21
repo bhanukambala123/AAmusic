@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Play, Heart, Plus, Search as SearchIcon, Pause, ListMusic } from "lucide-react";
 import styles from "./page.module.css";
 import { useAudio, Song } from "@/context/AudioContext";
+import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
 
@@ -20,19 +21,46 @@ export default function Home() {
   const { playPlaylist, likedSongs, toggleLikedSong, currentSong, isPlaying, togglePlayPause, recentlyPlayed } = useAudio();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [featuredAlbum, setFeaturedAlbum] = useState<Album | null>(null);
+  const [fallbackSongs, setFallbackSongs] = useState<Song[]>([]);
+
+  const recentSongs = Array.isArray(recentlyPlayed) && recentlyPlayed.length > 0
+    ? recentlyPlayed.slice(0, 4)
+    : fallbackSongs ?? [];
+  const recentSongsList = Array.isArray(recentSongs) ? recentSongs : [];
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [searching, setSearching] = useState(false);
   const [greeting, setGreeting] = useState("Good Day");
-  
-  // Need to import useRouter if using it inside the Link
-  const { useRouter } = require('next/navigation');
   const router = useRouter();
 
   useEffect(() => {
     async function fetchData() {
+      const { data: songsData } = await supabase
+        .from('songs')
+        .select(`
+          id, title, artist, duration, audio_url, cover_url, album_id,
+          albums ( title, cover_url )
+        `)
+        .limit(100);
 
-      // Fetch albums (limit to 100 for performance, then pick 4 random ones in JS)
+      if (songsData && songsData.length > 0) {
+        const randomSongs = [...songsData]
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 4);
+
+        const formattedSongs: Song[] = randomSongs.map((song: any) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          duration: song.duration,
+          audio_url: song.audio_url,
+          url: song.audio_url,
+          albumTitle: song.albums?.title,
+          image: song.cover_url || song.albums?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150"
+        }));
+        setFallbackSongs(formattedSongs);
+      }
+
       const { data: albumsData } = await supabase
         .from('albums')
         .select('*')
@@ -46,7 +74,6 @@ export default function Home() {
         setAlbums(shuffledAlbums);
       }
 
-      // Fetch featured album titled "Raaka"
       const { data: featuredData } = await supabase
         .from('albums')
         .select('*')
@@ -134,10 +161,6 @@ export default function Home() {
           image: song.cover_url || song.albums?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150"
         }));
         playPlaylist(formatted);
-      } else {
-        if (songs.length > 0) {
-          playPlaylist(songs);
-        }
       }
     } catch (err) {
       console.error("Error playing featured album:", err);
@@ -266,15 +289,15 @@ export default function Home() {
         )}
       </section>
 
-      {/* Recently Played Songs */}
+      {/* Your Uploaded Songs */}
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Recently Played Songs</h2>
-        {recentlyPlayed.length > 0 ? (
+        {recentSongsList.length > 0 ? (
           <div className={styles.gridContainer}>
-            {recentlyPlayed.map((song, index) => {
+            {recentSongsList.map((song, index, list) => {
               const isLiked = likedSongs.includes(song.id.toString());
               return (
-                <div key={song.id} className={styles.songCardSmall} onClick={() => playPlaylist(recentlyPlayed, index)}>
+                <div key={song.id} className={styles.songCardSmall} onClick={() => playPlaylist(list, index)}>
                   <img src={song.image} alt={song.title} className={styles.songImageSmall} />
                   <div className={styles.songCardDetails}>
                     <div className={`${styles.songCardTitle} truncate`}>{song.title}</div>
@@ -291,7 +314,7 @@ export default function Home() {
             })}
           </div>
         ) : (
-          <p style={{ color: 'var(--text-secondary)' }}>No recently played songs yet. Start listening to see them here!</p>
+          <p style={{ color: 'var(--text-secondary)' }}>No songs available yet. Play or upload to see them here.</p>
         )}
       </section>
 

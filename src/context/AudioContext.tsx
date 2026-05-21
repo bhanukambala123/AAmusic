@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/immutability */
 
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -38,6 +39,7 @@ interface AudioContextType {
   likedSongs: string[];
   toggleLikedSong: (songId: string) => void;
   customPlaylists: CustomPlaylist[];
+  recentlyPlayed: Song[];
   createPlaylist: (title: string, category: string) => void;
   addSongToPlaylist: (playlistId: string, songId: string) => void;
   isShuffle: boolean;
@@ -50,7 +52,6 @@ interface AudioContextType {
   addToQueue: (song: Song) => void;
   queue: Song[];
   removeFromQueue: (index: number) => void;
-  recentlyPlayed: Song[];
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -77,9 +78,48 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const { user } = useAuth();
   const [likedSongs, setLikedSongs] = useState<string[]>([]);
   const [customPlaylists, setCustomPlaylists] = useState<CustomPlaylist[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
+
+  const getRecentlyPlayedStorageKey = () => {
+    if (typeof window === 'undefined') return 'recentlyPlayedSongs';
+    return user?.id ? `recentlyPlayedSongs_${user.id}` : 'recentlyPlayedSongs';
+  };
+
+  const persistRecentlyPlayed = (songs: Song[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(getRecentlyPlayedStorageKey(), JSON.stringify(songs));
+    } catch (error) {
+      console.error('Failed to persist recently played songs:', error);
+    }
+  };
+
+  const addSongToRecentlyPlayed = (song: Song) => {
+    setRecentlyPlayed(prev => {
+      const normalizedId = song.id.toString();
+      const next = [song, ...prev.filter((item) => item.id.toString() !== normalizedId)].slice(0, 20);
+      persistRecentlyPlayed(next);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(getRecentlyPlayedStorageKey());
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setRecentlyPlayed(parsed);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load recently played songs:', error);
+    }
+  }, [user]);
 
   // Refs and state synchronization to guarantee background play with screen off
   const queueRef = useRef<Song[]>([]);
@@ -128,8 +168,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   };
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastAction, setToastAction] = useState<{ label: string, onClick: () => void } | null>(null);
-
-  const { user } = useAuth();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playNextRef = useRef<() => void>(() => {});
@@ -211,13 +249,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     fetchData();
   }, [user]);
 
-  const addToRecentlyPlayed = (song: Song) => {
-    setRecentlyPlayed(prev => {
-      const filtered = prev.filter(s => String(s.id) !== String(song.id));
-      return [song, ...filtered].slice(0, 4);
-    });
-  };
-
   const playSong = (song: Song) => {
     if (!user) {
       showToast("Please login to play music");
@@ -227,10 +258,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
     }
-    addToRecentlyPlayed(song);
     setQueue([song]);
     setCurrentIndex(0);
     setCurrentSong(song);
+    addSongToRecentlyPlayed(song);
     setIsPlaying(true);
   };
 
@@ -243,7 +274,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const firstSong = songs[startIndex];
     if (firstSong) {
       updateMediaSessionMetadata(firstSong);
-      addToRecentlyPlayed(firstSong);
+      addSongToRecentlyPlayed(firstSong);
     }
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
@@ -346,6 +377,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     playPreviousRef.current = playPrevious;
   }, [playPrevious]);
+
+  const seek = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setProgress(time);
+    }
+  };
 
   useEffect(() => {
     if (!audioDOMRef.current) return;
@@ -480,12 +518,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
 
 
-  const seek = (time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      setProgress(time);
-    }
-  };
+
 
   const changeVolume = (val: number) => {
     const newVolume = Math.max(0, Math.min(1, val));
@@ -650,13 +683,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       toggleShuffle,
       isRepeat,
       toggleRepeat,
+      recentlyPlayed,
       toastMessage,
       showToast,
       addToQueue,
       queue,
       removeFromQueue,
-      toastAction,
-      recentlyPlayed
+      toastAction
     }}>
       {children}
       <audio ref={audioDOMRef} style={{ display: 'none' }} preload="auto" />

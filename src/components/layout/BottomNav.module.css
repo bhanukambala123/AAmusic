@@ -30,11 +30,8 @@
 }
 
 .active {
-  color: var(--accent-color-gold);
-}
-
-.active:hover {
-  color: var(--accent-color-gold);
+  color: #FFD700;
+  font-weight: 700;
 }
 
 /* Modal Styles */
