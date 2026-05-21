@@ -254,6 +254,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       showToast("Please login to play music");
       return;
     }
+    if (audioRef.current) {
+      loadedSongUrlRef.current = song.url;
+      audioRef.current.src = getSecureUrl(song.url);
+      audioRef.current.load();
+      audioRef.current.play().catch(e => console.error("Playback prevented in playSong:", e));
+    }
     updateMediaSessionMetadata(song);
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
@@ -272,6 +278,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
     if (songs.length === 0) return;
     const firstSong = songs[startIndex];
+    if (audioRef.current && firstSong) {
+      loadedSongUrlRef.current = firstSong.url;
+      audioRef.current.src = getSecureUrl(firstSong.url);
+      audioRef.current.load();
+      audioRef.current.play().catch(e => console.error("Playback prevented in playPlaylist:", e));
+    }
     if (firstSong) {
       updateMediaSessionMetadata(firstSong);
       addSongToRecentlyPlayed(firstSong);
@@ -291,7 +303,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!currentSong) return;
-    setIsPlaying(!isPlaying);
+    const nextPlayingState = !isPlaying;
+    if (audioRef.current) {
+      if (nextPlayingState) {
+        audioRef.current.play().catch(e => console.error("Playback prevented in togglePlayPause:", e));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+    setIsPlaying(nextPlayingState);
   };
 
   const playNext = useCallback(() => {
@@ -491,21 +511,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Sync state to audio element
+  // Sync state to Media Session playbackState only
   useEffect(() => {
-    if (audioRef.current) {
-      const audio = audioRef.current;
-      if (isPlaying) {
-        if (audio.paused) {
-          audio.play().catch(e => console.error("Playback prevented:", e));
-        }
-      } else {
-        if (!audio.paused) {
-          audio.pause();
-        }
-      }
-    }
-
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       try {
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
@@ -516,19 +523,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (audioRef.current && currentSong) {
-      const wasPlaying = isPlaying || audioRef.current.currentTime > 0;
-      
-      if (loadedSongUrlRef.current !== currentSong.url) {
-        loadedSongUrlRef.current = currentSong.url;
-        audioRef.current.src = getSecureUrl(currentSong.url);
-        audioRef.current.load();
-        if (wasPlaying) {
-          audioRef.current.play().catch(e => console.error("Playback prevented:", e));
-          setIsPlaying(true);
-        }
-      }
-
+    if (currentSong) {
       // Update Media Session Metadata safely
       updateMediaSessionMetadata(currentSong);
       

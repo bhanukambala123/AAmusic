@@ -14,6 +14,7 @@ import GlobalLoader from "../common/GlobalLoader";
 import Toast from "../common/Toast";
 
 import UpdatePrompt from "../common/UpdatePrompt";
+import InstallPrompt from "../common/InstallPrompt";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
@@ -56,6 +57,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {isNavigating && <GlobalLoader />}
       <Toast />
       <UpdatePrompt />
+      <InstallPrompt />
       <div className={styles.layout}>
         {!isMobile && <Sidebar />}
         
@@ -84,8 +86,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               <Link href="/admin" className={styles.mobileAdminBtn}>
                 <Settings size={20} />
               </Link>
+            ) : !user ? (
+              <Link href="/signup" className={styles.mobileSignupBtn}>
+                Sign Up
+              </Link>
             ) : (
-              <div style={{ width: 40 }}></div>
+              <div className={styles.mobilePlaceholder}></div>
             )}
           </header>
         )}
