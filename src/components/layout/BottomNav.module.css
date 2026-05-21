@@ -30,7 +30,17 @@
 }
 
 .active {
-  color: #FFD700;
+  color: var(--accent-color-gold) !important;
+  font-weight: 700;
+}
+
+/* Enforce active and active click/touch states to render gold/yellow */
+.navItem.active,
+.navItem.active:hover,
+.navItem.active:active,
+.navItem.active:focus,
+.navItem:active {
+  color: var(--accent-color-gold) !important;
   font-weight: 700;
 }
 

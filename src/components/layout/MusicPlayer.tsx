@@ -70,7 +70,6 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
     if (!duration) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
-    setIsDragging(true);
 
     const getClientX = (event: any) => {
       if (event.touches && event.touches.length > 0) {
@@ -84,8 +83,24 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
 
     const clientX = getClientX(e);
     const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const initialDragTime = percent * duration;
-    setDragTime(initialDragTime);
+    const targetTime = percent * duration;
+
+    // Check version control: Gate dragging to "1.0.4"
+    let currentAppVersion = "";
+    try {
+      currentAppVersion = localStorage.getItem("app_version") || "";
+    } catch (err) {
+      console.error("[MusicPlayer] Error reading app version from storage:", err);
+    }
+
+    if (currentAppVersion !== "1.0.4") {
+      // Classic click/tap seek only, no drag listeners
+      seek(targetTime);
+      return;
+    }
+
+    setIsDragging(true);
+    setDragTime(targetTime);
 
     const handleDragMove = (moveEvent: MouseEvent | TouchEvent) => {
       const moveClientX = (moveEvent as TouchEvent).touches && (moveEvent as TouchEvent).touches.length > 0

@@ -50,6 +50,17 @@ self.addEventListener('fetch', (event) => {
     return; // Let the browser handle normally via network
   }
 
+  // App Shell navigation - Serve the cached '/' for all direct page navigations to prevent silent auto-updates on startup
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match('/').then((cachedResponse) => {
+        // If we have the cached App Shell, serve it immediately; otherwise fetch from network
+        return cachedResponse || fetch(event.request);
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -81,16 +92,11 @@ self.addEventListener('fetch', (event) => {
 
           return response;
         })
-        .catch(() => {
-          // If offline and request is for a page/navigation, return the cached homepage index
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
-          return null;
-        });
+        .catch(() => null);
     })
   );
 });
+
 
 // Message event - Listen for SKIP_WAITING to activate waiting worker
 self.addEventListener('message', (event) => {

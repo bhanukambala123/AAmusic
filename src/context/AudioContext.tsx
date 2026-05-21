@@ -317,28 +317,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } else {
       nextIndex = (currentIdx + 1) % currentQueue.length;
     }
-
+ 
     const nextSong = currentQueue[nextIndex];
     if (audioRef.current && nextSong) {
-      updateMediaSessionMetadata(nextSong);
-      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-      }
       loadedSongUrlRef.current = nextSong.url;
       audioRef.current.src = getSecureUrl(nextSong.url);
       audioRef.current.load(); // Force immediate load in iOS Safari to prevent background audio suspension
       audioRef.current.play().catch(e => console.error("Playback prevented in playNext:", e));
+      
+      updateMediaSessionMetadata(nextSong);
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
     }
-
+ 
     setCurrentIndex(nextIndex);
     setCurrentSong(nextSong);
     setIsPlaying(true);
   }, []);
-
+ 
   const playPrevious = useCallback(() => {
     const currentQueue = queueRef.current;
     if (currentQueue.length === 0) return;
-
+ 
     const repeat = isRepeatRef.current;
     if (repeat) {
       if (audioRef.current) {
@@ -347,7 +348,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-
+ 
     if (audioRef.current && audioRef.current.currentTime > 3) {
       audioRef.current.currentTime = 0;
       return;
@@ -355,18 +356,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const currentIdx = currentIndexRef.current;
     const prevIndex = currentIdx === 0 ? currentQueue.length - 1 : currentIdx - 1;
     const prevSong = currentQueue[prevIndex];
-
+ 
     if (audioRef.current && prevSong) {
-      updateMediaSessionMetadata(prevSong);
-      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-      }
       loadedSongUrlRef.current = prevSong.url;
       audioRef.current.src = getSecureUrl(prevSong.url);
       audioRef.current.load(); // Force immediate load in iOS Safari to prevent background audio suspension
       audioRef.current.play().catch(e => console.error("Playback prevented in playPrevious:", e));
+      
+      updateMediaSessionMetadata(prevSong);
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
     }
-
+ 
     setCurrentIndex(prevIndex);
     setCurrentSong(prevSong);
     setIsPlaying(true);
@@ -422,9 +424,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       playNextRef.current();
     };
 
+    const handleNativePlay = () => {
+      setIsPlaying(true);
+    };
+
+    const handleNativePause = () => {
+      setIsPlaying(false);
+    };
+
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handleNativePlay);
+    audio.addEventListener('pause', handleNativePause);
 
     // Register Media Session action handlers ONCE on mount
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
@@ -474,16 +486,23 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handleNativePlay);
+      audio.removeEventListener('pause', handleNativePause);
     };
   }, []);
 
   // Sync state to audio element
   useEffect(() => {
     if (audioRef.current) {
+      const audio = audioRef.current;
       if (isPlaying) {
-        audioRef.current.play().catch(e => console.error("Playback prevented:", e));
+        if (audio.paused) {
+          audio.play().catch(e => console.error("Playback prevented:", e));
+        }
       } else {
-        audioRef.current.pause();
+        if (!audio.paused) {
+          audio.pause();
+        }
       }
     }
 

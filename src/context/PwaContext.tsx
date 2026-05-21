@@ -13,6 +13,8 @@ interface PwaContextType {
 
 const PwaContext = createContext<PwaContextType | undefined>(undefined);
 
+const CURRENT_VERSION = "1.0.4";
+
 export const PwaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -26,9 +28,33 @@ export const PwaProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
+    // Check if running an unapproved update version
+    try {
+      const storedVersion = localStorage.getItem("app_version");
+      if (!storedVersion) {
+        // First launch ever, record current version silently
+        localStorage.setItem("app_version", CURRENT_VERSION);
+      } else if (storedVersion !== CURRENT_VERSION) {
+        console.log("[PWA Context] Unapproved new app version detected on launch.");
+        setUpdateAvailable(true);
+      }
+    } catch (e) {
+      console.error("[PWA Context] Error reading app version storage:", e);
+    }
+
     const handleControllerChange = () => {
-      console.log("[PWA Context] Controller changed, reloading page...");
-      window.location.reload();
+      console.log("[PWA Context] Controller changed event fired.");
+      try {
+        if (localStorage.getItem("pwa_update_approved") === "true") {
+          console.log("[PWA Context] Controller changed and update approved, reloading page...");
+          localStorage.removeItem("pwa_update_approved");
+          window.location.reload();
+        } else {
+          console.log("[PWA Context] Controller changed but update was NOT approved. Skipping auto-reload.");
+        }
+      } catch (e) {
+        console.error("[PWA Context] Error handling controller change reload:", e);
+      }
     };
 
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
@@ -117,6 +143,13 @@ export const PwaProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateApp = () => {
+    try {
+      localStorage.setItem("pwa_update_approved", "true");
+      localStorage.setItem("app_version", CURRENT_VERSION);
+    } catch (e) {
+      console.error("[PWA Context] Error saving app version storage:", e);
+    }
+
     const worker = waitingWorkerRef.current || (registrationRef.current && registrationRef.current.waiting);
     if (worker) {
       console.log("[PWA Context] Sending SKIP_WAITING to waiting worker.");
