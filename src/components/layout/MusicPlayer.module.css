@@ -254,6 +254,13 @@
     width: auto;
     flex: 1;
     min-width: 0;
+    margin-right: 16px; /* Ensure space so details do not merge with controls */
+  }
+
+  .playerControls {
+    width: auto;
+    max-width: none;
+    flex-shrink: 0;
   }
   
   .coverArt {

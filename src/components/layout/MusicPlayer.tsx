@@ -58,16 +58,65 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
     return () => window.removeEventListener('openFullScreenPlayer', handleOpenFS);
   }, [isMobile]);
 
-  const progressRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(0);
+
   const volumeRef = useRef<HTMLDivElement>(null);
 
   const isLiked = currentSong ? likedSongs.includes(currentSong.id.toString()) : false;
 
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressRef.current || !duration) return;
-    const rect = progressRef.current.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    seek(percent * duration);
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation(); // Prevent opening fullscreen overlay on mobile top progress click/touch
+    if (!duration) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    setIsDragging(true);
+
+    const getClientX = (event: any) => {
+      if (event.touches && event.touches.length > 0) {
+        return event.touches[0].clientX;
+      }
+      if (event.changedTouches && event.changedTouches.length > 0) {
+        return event.changedTouches[0].clientX;
+      }
+      return event.clientX;
+    };
+
+    const clientX = getClientX(e);
+    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const initialDragTime = percent * duration;
+    setDragTime(initialDragTime);
+
+    const handleDragMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const moveClientX = (moveEvent as TouchEvent).touches && (moveEvent as TouchEvent).touches.length > 0
+        ? (moveEvent as TouchEvent).touches[0].clientX
+        : (moveEvent as MouseEvent).clientX;
+
+      const movePercent = Math.max(0, Math.min(1, (moveClientX - rect.left) / rect.width));
+      setDragTime(movePercent * duration);
+    };
+
+    const handleDragEnd = (endEvent: MouseEvent | TouchEvent) => {
+      const endClientX = (endEvent as TouchEvent).changedTouches && (endEvent as TouchEvent).changedTouches.length > 0
+        ? (endEvent as TouchEvent).changedTouches[0].clientX
+        : (endEvent as MouseEvent).clientX;
+
+      const finalPercent = Math.max(0, Math.min(1, (endClientX - rect.left) / rect.width));
+      const finalTime = finalPercent * duration;
+
+      seek(finalTime);
+      setIsDragging(false);
+
+      window.removeEventListener("mousemove", handleDragMove);
+      window.removeEventListener("touchmove", handleDragMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchend", handleDragEnd);
+    };
+
+    window.addEventListener("mousemove", handleDragMove);
+    window.addEventListener("touchmove", handleDragMove, { passive: false });
+    window.addEventListener("mouseup", handleDragEnd);
+    window.addEventListener("touchend", handleDragEnd);
   };
 
   const handleVolumeClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -79,7 +128,8 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
 
   if (!currentSong) return null; // Don't show player if nothing is playing/queued
 
-  const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
+  const activeProgress = isDragging ? dragTime : progress;
+  const progressPercent = duration > 0 ? (activeProgress / duration) * 100 : 0;
   const volumePercent = volume * 100;
 
   return (
@@ -96,11 +146,8 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
       {isMobile && (
         <div 
           className={styles.progressBarMobile} 
-          ref={progressRef} 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleProgressClick(e);
-          }}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
         >
           <div className={styles.progressFillMobile} style={{ width: `${progressPercent}%` }}>
             <div className={styles.progressThumbMobile}></div>
@@ -209,8 +256,12 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
         
         {!isMobile && (
           <div className={styles.progressContainer}>
-            <span className={styles.timeText}>{formatTime(progress)}</span>
-            <div className={styles.progressBar} ref={progressRef} onClick={handleProgressClick}>
+            <span className={styles.timeText}>{formatTime(activeProgress)}</span>
+            <div 
+              className={styles.progressBar} 
+              onMouseDown={handleDragStart}
+              onTouchStart={handleDragStart}
+            >
               <div className={styles.progressFill} style={{ width: `${progressPercent}%` }}>
                 <div className={styles.progressThumb}></div>
               </div>
@@ -319,7 +370,11 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
 
           {/* Seek Bar */}
           <div className={styles.fsProgressSection}>
-            <div className={styles.fsProgressBarContainer} ref={progressRef} onClick={handleProgressClick}>
+            <div 
+              className={styles.fsProgressBarContainer} 
+              onMouseDown={handleDragStart}
+              onTouchStart={handleDragStart}
+            >
               <div className={styles.fsProgressBar}>
                 <div className={styles.fsProgressFill} style={{ width: `${progressPercent}%` }}>
                   <div className={styles.fsProgressThumb}></div>
@@ -327,7 +382,7 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
               </div>
             </div>
             <div className={styles.fsTimeRow}>
-              <span>{formatTime(progress)}</span>
+              <span>{formatTime(activeProgress)}</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>

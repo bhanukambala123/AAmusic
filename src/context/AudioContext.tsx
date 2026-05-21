@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/immutability */
 
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -174,7 +174,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const playPreviousRef = useRef<() => void>(() => {});
   const loadedSongUrlRef = useRef<string | null>(null);
 
-  const updateMediaSessionMetadata = (song: Song) => {
+  const updateMediaSessionMetadata = useCallback((song: Song) => {
     if (typeof window !== 'undefined' && 'mediaSession' in navigator && window.MediaMetadata) {
       try {
         const absoluteArtworkUrl = getAbsoluteArtworkUrl(song.image);
@@ -195,7 +195,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         console.error("Failed to update Media Session metadata:", error);
       }
     }
-  };
+  }, []);
 
   // Fetch data from Supabase when user changes
   useEffect(() => {
@@ -294,7 +294,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setIsPlaying(!isPlaying);
   };
 
-  const playNext = () => {
+  const playNext = useCallback(() => {
     const currentQueue = queueRef.current;
     if (currentQueue.length === 0) return;
     
@@ -326,15 +326,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
       loadedSongUrlRef.current = nextSong.url;
       audioRef.current.src = getSecureUrl(nextSong.url);
+      audioRef.current.load(); // Force immediate load in iOS Safari to prevent background audio suspension
       audioRef.current.play().catch(e => console.error("Playback prevented in playNext:", e));
     }
 
     setCurrentIndex(nextIndex);
     setCurrentSong(nextSong);
     setIsPlaying(true);
-  };
+  }, []);
 
-  const playPrevious = () => {
+  const playPrevious = useCallback(() => {
     const currentQueue = queueRef.current;
     if (currentQueue.length === 0) return;
 
@@ -362,13 +363,14 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       }
       loadedSongUrlRef.current = prevSong.url;
       audioRef.current.src = getSecureUrl(prevSong.url);
+      audioRef.current.load(); // Force immediate load in iOS Safari to prevent background audio suspension
       audioRef.current.play().catch(e => console.error("Playback prevented in playPrevious:", e));
     }
 
     setCurrentIndex(prevIndex);
     setCurrentSong(prevSong);
     setIsPlaying(true);
-  };
+  }, []);
 
   useEffect(() => {
     playNextRef.current = playNext;

@@ -425,6 +425,7 @@
 @media (max-width: 768px) {
   .container {
     padding: 16px;
+    padding-bottom: 160px !important;
   }
   
   .header {
