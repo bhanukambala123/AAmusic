@@ -14,7 +14,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching app shell & core assets');
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -90,4 +90,12 @@ self.addEventListener('fetch', (event) => {
         });
     })
   );
+});
+
+// Message event - Listen for SKIP_WAITING to activate waiting worker
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[Service Worker] Received SKIP_WAITING, activating new worker...');
+    self.skipWaiting();
+  }
 });

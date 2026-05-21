@@ -13,6 +13,8 @@ import SplashScreen from "../common/SplashScreen";
 import GlobalLoader from "../common/GlobalLoader";
 import Toast from "../common/Toast";
 
+import UpdatePrompt from "../common/UpdatePrompt";
+
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
@@ -45,22 +47,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      const registerSW = () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => console.log("SW registered successfully:", reg))
-          .catch((err) => console.log("SW registration failed:", err));
-      };
-
-      if (document.readyState === "complete") {
-        registerSW();
-      } else {
-        window.addEventListener("load", registerSW);
-        return () => window.removeEventListener("load", registerSW);
-      }
-    }
   }, []);
   if (!mounted) return null;
 
@@ -69,6 +55,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
       {isNavigating && <GlobalLoader />}
       <Toast />
+      <UpdatePrompt />
       <div className={styles.layout}>
         {!isMobile && <Sidebar />}
         

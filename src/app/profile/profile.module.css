@@ -452,3 +452,137 @@
     width: 100%;
   }
 }
+
+/* App Updates Card */
+.updatesCard {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--glass-shadow);
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.updatesHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.updatesIcon {
+  color: var(--accent-color-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.updatesTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.updatesContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.statusText {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.statusUpToDate {
+  color: #2ecc71;
+}
+
+.statusUpdateAvailable {
+  color: var(--accent-color-gold);
+}
+
+.appVersion {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.updatesActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.updateNowBtnProfile {
+  flex: 1;
+  min-width: 140px;
+  background: var(--accent-color-gold);
+  color: #000;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 10px rgba(212, 175, 55, 0.2);
+}
+
+.updateNowBtnProfile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+
+.checkUpdatesBtn {
+  flex: 1;
+  min-width: 140px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.checkUpdatesBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.checkUpdatesBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -3,16 +3,27 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Settings, Disc, Shield, Music, Heart, Upload } from "lucide-react";
+import { User, LogOut, Settings, Disc, Shield, Music, Heart, Upload, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
 import styles from "./profile.module.css";
 import { useAuth } from "@/context/AuthContext";
 import { useAudio } from "@/context/AudioContext";
+import { usePwa } from "@/context/PwaContext";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, signOut, username, role, avatarUrl, updateAvatarUrl } = useAuth();
   const { likedSongs, customPlaylists, showToast } = useAudio();
   const [uploading, setUploading] = useState(false);
+  const { updateAvailable, checking, checkForUpdates, updateApp } = usePwa();
+
+  const handleManualCheck = async () => {
+    const isNewUpdateAvailable = await checkForUpdates();
+    if (isNewUpdateAvailable) {
+      showToast("A new update is available! Click 'Update Now' to apply.");
+    } else {
+      showToast("AAmusic is up to date! You have the latest version.");
+    }
+  };
 
   // PWA states and events
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -271,6 +282,60 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+      
+      {/* App Updates Card */}
+      <div className={styles.updatesCard}>
+        <div className={styles.updatesHeader}>
+          <div className={styles.updatesIcon}>
+            <RefreshCw size={20} className={checking ? styles.spin : ""} />
+          </div>
+          <h2 className={styles.updatesTitle}>App Updates</h2>
+        </div>
+        <div className={styles.updatesContent}>
+          <div className={styles.statusRow}>
+            {updateAvailable ? (
+              <>
+                <AlertCircle size={20} className={styles.statusUpdateAvailable} />
+                <span className={`${styles.statusText} ${styles.statusUpdateAvailable}`}>
+                  Update Available!
+                </span>
+              </>
+            ) : (
+              <>
+                <CheckCircle size={20} className={styles.statusUpToDate} />
+                <span className={`${styles.statusText} ${styles.statusUpToDate}`}>
+                  Application is Up to Date
+                </span>
+              </>
+            )}
+          </div>
+          <p className={styles.appVersion}>
+            Current version: v1.0.0 {updateAvailable && "(New updates pending installation)"}
+          </p>
+        </div>
+        <div className={styles.updatesActions}>
+          <button 
+            onClick={handleManualCheck}
+            disabled={checking}
+            className={styles.checkUpdatesBtn}
+          >
+            {checking ? (
+              <>
+                <RefreshCw size={16} className={styles.spin} />
+                Checking...
+              </>
+            ) : (
+              "Check for Updates"
+            )}
+          </button>
+          {updateAvailable && (
+            <button onClick={updateApp} className={styles.updateNowBtnProfile}>
+              <RefreshCw size={16} />
+              Update Now
+            </button>
+          )}
+        </div>
+      </div>
       
       <div style={{ height: '80px' }}></div>
     </div>

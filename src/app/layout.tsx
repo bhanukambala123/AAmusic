@@ -3,6 +3,7 @@ import "./globals.css";
 import MainLayout from "@/components/layout/MainLayout";
 import { AuthProvider } from "@/context/AuthContext";
 import { AudioProvider } from "@/context/AudioContext";
+import { PwaProvider } from "@/context/PwaContext";
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
@@ -36,7 +37,9 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <AudioProvider>
-            <MainLayout>{children}</MainLayout>
+            <PwaProvider>
+              <MainLayout>{children}</MainLayout>
+            </PwaProvider>
           </AudioProvider>
         </AuthProvider>
       </body>
