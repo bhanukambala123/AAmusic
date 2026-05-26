@@ -50,13 +50,13 @@ self.addEventListener('fetch', (event) => {
     return; // Let the browser handle normally via network
   }
 
-  // App Shell navigation - Serve the cached '/' for all direct page navigations to prevent silent auto-updates on startup
+  // App Shell navigation - Network-first for direct page navigations, fallback to cached App Shell if offline
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/').then((cachedResponse) => {
-        // If we have the cached App Shell, serve it immediately; otherwise fetch from network
-        return cachedResponse || fetch(event.request);
-      })
+      fetch(event.request)
+        .catch(() => {
+          return caches.match('/');
+        })
     );
     return;
   }
