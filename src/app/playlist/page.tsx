@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { Play, Music, Trash2 } from "lucide-react";
+import React, { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Play, Music } from "lucide-react";
 import { useAudio, Song } from "@/context/AudioContext";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
-import styles from "../../page.module.css";
+import styles from "../page.module.css";
 
-export default function PlaylistPage() {
-  const { id } = useParams();
-  const { customPlaylists, playPlaylist, likedSongs, showToast } = useAudio();
+function PlaylistContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id") as string;
+  const { customPlaylists, playPlaylist, likedSongs } = useAudio();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,10 +58,18 @@ export default function PlaylistPage() {
       }
       setLoading(false);
     }
-    fetchSongs();
-  }, [id, playlist?.songs]);
+    
+    if (id && playlist) {
+      fetchSongs();
+    } else if (!playlist) {
+      setLoading(false);
+    }
+  }, [id, playlist]);
 
   if (!playlist) {
+    if (loading) {
+      return <div className={styles.container} style={{ color: '#fff' }}>Loading playlist...</div>;
+    }
     return <div className={styles.container} style={{ color: '#fff' }}>Playlist not found.</div>;
   }
 
@@ -136,5 +145,13 @@ export default function PlaylistPage() {
       
       <div style={{ height: '40px' }}></div>
     </div>
+  );
+}
+
+export default function PlaylistPage() {
+  return (
+    <Suspense fallback={<div style={{ color: 'white', padding: '40px' }}>Loading...</div>}>
+      <PlaylistContent />
+    </Suspense>
   );
 }

@@ -6,11 +6,19 @@
 
 .header {
   margin-bottom: 32px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
 }
 
 .tabs {
   display: flex;
-  gap: 16px;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
 }
 
 .tab {

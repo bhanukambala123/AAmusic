@@ -1,6 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
+
 
 interface PwaContextType {
   updateAvailable: boolean;
@@ -13,7 +15,7 @@ interface PwaContextType {
 
 const PwaContext = createContext<PwaContextType | undefined>(undefined);
 
-const CURRENT_VERSION = "1.0.4";
+const CURRENT_VERSION = "1.0.5";
 
 export const PwaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -27,6 +29,13 @@ export const PwaProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }
+
+    // Disable service worker in native Capacitor environments to prevent routing conflicts
+    if (Capacitor.isNativePlatform()) {
+      console.log("[PWA Context] Service Worker registration skipped in native Capacitor environment.");
+      return;
+    }
+
 
     // Check if running an unapproved update version
     try {

@@ -58,7 +58,7 @@ export default function Library() {
       count: `${cp.songs.length} songs`,
       image: cp.image || "https://images.unsplash.com/photo-1619983081563-430f63602796?auto=format&fit=crop&q=80&w=300",
       isLiked: false,
-      route: `/playlist/${cp.id}`
+      route: `/playlist?id=${cp.id}`
     }))
   ];
 
@@ -138,7 +138,7 @@ export default function Library() {
           ) : savedAlbums.length > 0 ? (
             <div className={styles.grid}>
               {savedAlbums.map((album) => (
-                <Link href={`/album/${album.id}`} key={album.id} style={{ textDecoration: 'none' }}>
+                <Link href={`/album?id=${album.id}`} key={album.id} style={{ textDecoration: 'none' }}>
                   <div className={styles.card}>
                     <div className={styles.imageWrapper}>
                       <img src={album.cover_url} alt={album.title} className={styles.image} />

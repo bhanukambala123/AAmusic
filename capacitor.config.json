@@ -4,7 +4,6 @@
   "webDir": "out",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://aamusic.vercel.app",
     "cleartext": true
   },
   "android": {

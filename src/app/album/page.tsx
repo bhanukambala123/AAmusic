@@ -1,24 +1,24 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Play, Heart, Plus, Check } from "lucide-react";
 import { useAudio, Song } from "@/context/AudioContext";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
-import styles from "../../page.module.css";
+import styles from "../page.module.css";
 
-export default function AlbumPage() {
-  const params = useParams();
-  const id = params.id as string;
-  const { playPlaylist, likedSongs, toggleLikedSong, libraryAlbums, toggleLibraryAlbum } = useAudio();
+function AlbumContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id") as string;
+  const { playPlaylist, likedSongs, libraryAlbums, toggleLibraryAlbum } = useAudio();
   const [album, setAlbum] = useState<any>(null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchAlbumAndSongs() {
-      if (!id) return; // Wait for id to be available
+      if (!id) return;
 
       // Fetch album details
       const { data: albumData, error } = await supabase
@@ -132,5 +132,13 @@ export default function AlbumPage() {
       
       <div style={{ height: '40px' }}></div>
     </div>
+  );
+}
+
+export default function AlbumPage() {
+  return (
+    <Suspense fallback={<div style={{ color: 'white', padding: '40px' }}>Loading...</div>}>
+      <AlbumContent />
+    </Suspense>
   );
 }

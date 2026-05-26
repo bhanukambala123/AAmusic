@@ -15,6 +15,17 @@ interface Album {
   description?: string;
 }
 
+interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  duration: string;
+  audio_url: string;
+  cover_url?: string;
+  album_id?: string | null;
+}
+
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, role, loading: authLoading } = useAuth();
@@ -34,9 +45,12 @@ export default function AdminDashboard() {
   const [songAudioUrl, setSongAudioUrl] = useState('');
   const [songCoverUrl, setSongCoverUrl] = useState('');
   const [selectedAlbum, setSelectedAlbum] = useState('');
+  const [editingSongId, setEditingSongId] = useState<string | null>(null);
 
   // Dropdown Data
   const [availableAlbums, setAvailableAlbums] = useState<Album[]>([]);
+  const [availableSongs, setAvailableSongs] = useState<Song[]>([]);
+
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -57,9 +71,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSongs = async () => {
+    const { data } = await supabase.from('songs').select('*').order('created_at', { ascending: false });
+    if (data) {
+      setAvailableSongs(data);
+    }
+  };
+
   useEffect(() => {
     fetchAlbums();
+    fetchSongs();
   }, [activeTab]);
+
 
   const handleCreateOrUpdateAlbum = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,37 +143,71 @@ export default function AdminDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCreateSong = async (e: React.FormEvent) => {
+  const handleCreateOrUpdateSong = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
     try {
-      const { data, error } = await supabase
-        .from('songs')
-        .insert([{ 
-          title: songTitle, 
-          artist: songArtist, 
-          duration: songDuration,
-          audio_url: songAudioUrl,
-          cover_url: songCoverUrl,
-          album_id: selectedAlbum ? selectedAlbum : null
-        }]);
+      const songData = { 
+        title: songTitle, 
+        artist: songArtist, 
+        duration: songDuration,
+        audio_url: songAudioUrl,
+        cover_url: songCoverUrl ? songCoverUrl : null,
+        album_id: selectedAlbum ? selectedAlbum : null
+      };
 
-      if (error) throw error;
-      setMessage('Song added successfully!');
+      if (editingSongId) {
+        const { data, error } = await supabase
+          .from('songs')
+          .update(songData)
+          .eq('id', editingSongId)
+          .select();
+
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          throw new Error("Updating was blocked by Row Level Security (RLS). Please check your Supabase policies.");
+        }
+        
+        setMessage('Song updated successfully!');
+      } else {
+        const { error } = await supabase
+          .from('songs')
+          .insert([songData]);
+
+        if (error) throw error;
+        setMessage('Song added successfully!');
+      }
+
       setSongTitle('');
       setSongArtist('');
       setSongDuration('');
       setSongAudioUrl('');
       setSongCoverUrl('');
       setSelectedAlbum('');
+      setEditingSongId(null);
+      fetchSongs();
     } catch (err: any) {
       setMessage(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
+
+  const startEditSong = (song: Song) => {
+    setSongTitle(song.title);
+    setSongArtist(song.artist);
+    setSongDuration(song.duration);
+    setSongAudioUrl(song.audio_url);
+    setSongCoverUrl(song.cover_url || '');
+    setSelectedAlbum(song.album_id || '');
+    setEditingSongId(song.id);
+    setActiveTab('song');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
 
   if (authLoading) {
     return <div style={{ color: 'white', padding: '40px', textAlign: 'center' }}>Checking access...</div>;
@@ -290,7 +347,9 @@ export default function AdminDashboard() {
         </div>
         </>
       ) : (
-        <form className={styles.form} onSubmit={handleCreateSong}>
+        <>
+        <form className={styles.form} onSubmit={handleCreateOrUpdateSong}>
+          <h2 style={{ color: 'white', marginBottom: '20px' }}>{editingSongId ? 'Edit Song' : 'Create New Song'}</h2>
           <div className={styles.formGroup}>
             <label>Song Title</label>
             <input 
@@ -348,7 +407,7 @@ export default function AdminDashboard() {
               className={styles.input} 
               value={selectedAlbum} 
               onChange={e => setSelectedAlbum(e.target.value)}
-              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
+              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', padding: '12px', borderRadius: '8px' }}
             >
               <option value="">-- No Album --</option>
               {availableAlbums.map(album => (
@@ -358,11 +417,58 @@ export default function AdminDashboard() {
               ))}
             </select>
           </div>
-
+ 
           <button type="submit" disabled={loading} className={styles.submitBtn}>
-            {loading ? 'Adding...' : 'Add Song'}
+            {loading ? 'Processing...' : (editingSongId ? 'Update Song' : 'Add Song')}
           </button>
+          {editingSongId && (
+            <button 
+              type="button" 
+              className={styles.secondaryBtn} 
+              style={{ marginTop: '10px', width: '100%' }}
+              onClick={() => {
+                setEditingSongId(null);
+                setSongTitle('');
+                setSongArtist('');
+                setSongDuration('');
+                setSongAudioUrl('');
+                setSongCoverUrl('');
+                setSelectedAlbum('');
+              }}
+            >
+              Cancel Edit
+            </button>
+          )}
         </form>
+
+        {/* Existing Songs List for Editing */}
+        <div className={styles.manageSection}>
+          <h2 className={styles.sectionTitle}>Manage Existing Songs</h2>
+          <div className={styles.albumGrid}>
+            {availableSongs.map(song => {
+              const songAlbum = availableAlbums.find(a => a.id.toString() === song.album_id?.toString());
+              const songPoster = song.cover_url || songAlbum?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150";
+              return (
+                <div key={song.id} className={styles.albumItem}>
+                  <img src={songPoster} alt="" className={styles.miniCover} />
+                  <div className={styles.albumInfo}>
+                    <div className={styles.albumTitle}>{song.title}</div>
+                    <div className={styles.albumYear}>
+                      {song.artist} • {songAlbum ? songAlbum.title : 'Single'}
+                    </div>
+                  </div>
+                  <button 
+                    className={styles.editBtn}
+                    onClick={() => startEditSong(song)}
+                  >
+                    Edit
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        </>
       )}
       
       <div style={{ height: '40px' }}></div>

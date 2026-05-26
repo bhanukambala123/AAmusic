@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, Search, Library, PlusSquare, Heart, Settings, User, LogOut, Disc, X } from 'lucide-react';
 import styles from './Sidebar.module.css';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +11,8 @@ import { useState } from 'react';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentId = searchParams.get('id');
   const { user, signOut, username } = useAuth();
   const { createPlaylist, customPlaylists } = useAudio();
   
@@ -66,9 +68,9 @@ export default function Sidebar() {
           {customPlaylists.length > 0 ? (
             customPlaylists.map(playlist => (
               <Link 
-                href={`/playlist/${playlist.id}`} 
+                href={`/playlist?id=${playlist.id}`} 
                 key={playlist.id} 
-                className={`${styles.navItem} ${pathname === `/playlist/${playlist.id}` ? styles.active : ''}`} 
+                className={`${styles.navItem} ${(pathname === '/playlist' && currentId === playlist.id) ? styles.active : ''}`} 
                 style={{ fontSize: '14px', display: 'flex', justifyContent: 'space-between' }}
               >
                 <span className="truncate">{playlist.title}</span>

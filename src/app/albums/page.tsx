@@ -49,7 +49,7 @@ export default function AlbumsPage() {
       ) : albums.length > 0 ? (
         <div className={styles.albumGrid}>
           {albums.map((album) => (
-            <Link href={`/album/${album.id}`} key={album.id} style={{ textDecoration: 'none' }}>
+            <Link href={`/album?id=${album.id}`} key={album.id} style={{ textDecoration: 'none' }}>
               <div className={styles.albumCard}>
                 <div className={styles.imageWrapper}>
                   <img src={album.cover_url} alt={album.title} className={styles.albumImage} />
