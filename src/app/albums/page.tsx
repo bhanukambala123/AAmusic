@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Play, Disc } from "lucide-react";
+import { Play, Disc, Plus, Check } from "lucide-react";
 import styles from "../page.module.css";
 import { supabase } from "@/lib/supabase";
+import { useAudio } from "@/context/AudioContext";
 
 interface Album {
   id: string;
@@ -15,6 +16,7 @@ interface Album {
 }
 
 export default function AlbumsPage() {
+  const { libraryAlbums, toggleLibraryAlbum } = useAudio();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,6 +55,17 @@ export default function AlbumsPage() {
                   <img src={album.cover_url} alt={album.title} className={styles.albumImage} />
                   <button className={styles.albumPlayBtn}>
                     <Play fill="currentColor" size={24} />
+                  </button>
+                  <button 
+                    className={`${styles.albumLibraryBtn} ${libraryAlbums.includes(album.id.toString()) ? styles.added : ''}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleLibraryAlbum(album.id.toString());
+                    }}
+                    title={libraryAlbums.includes(album.id.toString()) ? "Remove from Library" : "Add to Library"}
+                  >
+                    {libraryAlbums.includes(album.id.toString()) ? <Check size={18} /> : <Plus size={18} />}
                   </button>
                 </div>
                 <div className={`${styles.albumTitle} truncate`}>{album.title}</div>

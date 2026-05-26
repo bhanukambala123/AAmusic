@@ -1,0 +1,20 @@
+{
+  "appId": "com.aamusic.app",
+  "appName": "AAmusic",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://aamusic.vercel.app",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "BackgroundMode": {
+      "title": "AAmusic Background Playback",
+      "text": "Streaming active audio tracks",
+      "color": "#FBBF24"
+    }
+  }
+}

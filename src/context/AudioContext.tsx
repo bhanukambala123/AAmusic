@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
+import { Capacitor } from '@capacitor/core';
 
 export interface Song {
   id: string | number;
@@ -38,6 +39,8 @@ interface AudioContextType {
   changeVolume: (value: number) => void;
   likedSongs: string[];
   toggleLikedSong: (songId: string) => void;
+  libraryAlbums: string[];
+  toggleLibraryAlbum: (albumId: string) => void;
   customPlaylists: CustomPlaylist[];
   recentlyPlayed: Song[];
   createPlaylist: (title: string, category: string) => void;
@@ -55,6 +58,17 @@ interface AudioContextType {
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
+
+// Persistent Global Audio Singleton to prevent background suspension and garbage collection
+let globalAudio: HTMLAudioElement | null = null;
+
+if (typeof window !== 'undefined') {
+  globalAudio = new Audio();
+  globalAudio.preload = 'auto';
+  // Allow inline streaming and preserve background audio context
+  globalAudio.setAttribute('playsinline', 'true');
+  globalAudio.setAttribute('webkit-playsinline', 'true');
+}
 
 const getAbsoluteArtworkUrl = (url: string) => {
   if (!url) return '';
@@ -80,8 +94,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [volume, setVolume] = useState(1);
   const { user } = useAuth();
   const [likedSongs, setLikedSongs] = useState<string[]>([]);
+  const [libraryAlbums, setLibraryAlbums] = useState<string[]>([]);
   const [customPlaylists, setCustomPlaylists] = useState<CustomPlaylist[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
+
+  // Initialize native background mode if running inside Capacitor
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      import('@anuradev/capacitor-background-mode').then(({ BackgroundMode }) => {
+        try {
+          // Force aggressive keep-awake settings
+          BackgroundMode.enable({
+            title: 'AAmusic Active Playback',
+            text: 'Playing your favorite tracks continuously',
+            subText: 'AAmusic background engine',
+            bigText: true,
+            silent: false,
+            hidden: false,
+            color: '#FBBF24',
+            icon: 'icon',
+            disableWebViewOptimization: true,
+            resume: true
+          });
+          BackgroundMode.requestDisableBatteryOptimizations();
+          BackgroundMode.disableWebViewOptimizations();
+          console.log("[AudioContext] Native Background Mode enabled aggressively.");
+        } catch (e) {
+          console.error("Failed to enable Capacitor Background Mode:", e);
+        }
+      }).catch(err => {
+        console.error("Failed to dynamically import @anuradev/capacitor-background-mode:", err);
+      });
+    }
+  }, []);
 
   const getRecentlyPlayedStorageKey = () => {
     if (typeof window === 'undefined') return 'recentlyPlayedSongs';
@@ -121,13 +166,43 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const getLibraryAlbumsStorageKey = () => {
+    if (typeof window === 'undefined') return 'libraryAlbums';
+    return user?.id ? `libraryAlbums_${user.id}` : 'libraryAlbums';
+  };
+
+  const persistLibraryAlbums = (albums: string[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(getLibraryAlbumsStorageKey(), JSON.stringify(albums));
+    } catch (error) {
+      console.error('Failed to persist library albums:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(getLibraryAlbumsStorageKey());
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setLibraryAlbums(parsed);
+        }
+      } else {
+        setLibraryAlbums([]);
+      }
+    } catch (error) {
+      console.error('Failed to load library albums:', error);
+    }
+  }, [user]);
+
   // Refs and state synchronization to guarantee background play with screen off
   const queueRef = useRef<Song[]>([]);
   const currentIndexRef = useRef<number>(0);
   const isShuffleRef = useRef<boolean>(false);
   const isRepeatRef = useRef<boolean>(false);
   const isPlayingRef = useRef<boolean>(false);
-  const audioDOMRef = useRef<HTMLAudioElement | null>(null);
 
   const [queue, setQueueState] = useState<Song[]>([]);
   const setQueue = (newQueueOrFn: Song[] | ((prev: Song[]) => Song[])) => {
@@ -169,7 +244,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastAction, setToastAction] = useState<{ label: string, onClick: () => void } | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const playNextRef = useRef<() => void>(() => {});
   const playPreviousRef = useRef<() => void>(() => {});
   const loadedSongUrlRef = useRef<string | null>(null);
@@ -205,9 +279,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setCurrentSong(null);
       setQueue([]);
       setIsPlaying(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
+      if (globalAudio) {
+        globalAudio.pause();
+        globalAudio.src = "";
       }
       return;
     }
@@ -254,11 +328,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       showToast("Please login to play music");
       return;
     }
-    if (audioRef.current) {
+    if (globalAudio) {
       loadedSongUrlRef.current = song.url;
-      audioRef.current.src = getSecureUrl(song.url);
-      audioRef.current.load();
-      audioRef.current.play().catch(e => console.error("Playback prevented in playSong:", e));
+      globalAudio.src = getSecureUrl(song.url);
+      globalAudio.load();
+      globalAudio.play().catch(e => console.error("Playback prevented in playSong:", e));
     }
     updateMediaSessionMetadata(song);
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
@@ -278,11 +352,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
     if (songs.length === 0) return;
     const firstSong = songs[startIndex];
-    if (audioRef.current && firstSong) {
+    if (globalAudio && firstSong) {
       loadedSongUrlRef.current = firstSong.url;
-      audioRef.current.src = getSecureUrl(firstSong.url);
-      audioRef.current.load();
-      audioRef.current.play().catch(e => console.error("Playback prevented in playPlaylist:", e));
+      globalAudio.src = getSecureUrl(firstSong.url);
+      globalAudio.load();
+      globalAudio.play().catch(e => console.error("Playback prevented in playPlaylist:", e));
     }
     if (firstSong) {
       updateMediaSessionMetadata(firstSong);
@@ -304,11 +378,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
     if (!currentSong) return;
     const nextPlayingState = !isPlaying;
-    if (audioRef.current) {
+    if (globalAudio) {
       if (nextPlayingState) {
-        audioRef.current.play().catch(e => console.error("Playback prevented in togglePlayPause:", e));
+        globalAudio.play().catch(e => console.error("Playback prevented in togglePlayPause:", e));
       } else {
-        audioRef.current.pause();
+        globalAudio.pause();
       }
     }
     setIsPlaying(nextPlayingState);
@@ -324,9 +398,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const shuffle = isShuffleRef.current;
     
     if (repeat) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.error("Playback prevented:", e));
+      if (globalAudio) {
+        globalAudio.currentTime = 0;
+        globalAudio.play().catch(e => console.error("Playback prevented:", e));
       }
       return;
     } else if (shuffle) {
@@ -339,11 +413,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
  
     const nextSong = currentQueue[nextIndex];
-    if (audioRef.current && nextSong) {
+    if (globalAudio && nextSong) {
       loadedSongUrlRef.current = nextSong.url;
-      audioRef.current.src = getSecureUrl(nextSong.url);
-      audioRef.current.load(); // Force immediate load in iOS Safari to prevent background audio suspension
-      audioRef.current.play().catch(e => console.error("Playback prevented in playNext:", e));
+      globalAudio.src = getSecureUrl(nextSong.url);
+      globalAudio.load(); // Force immediate load in iOS Safari to prevent background audio suspension
+      globalAudio.play().catch(e => console.error("Playback prevented in playNext:", e));
       
       updateMediaSessionMetadata(nextSong);
       if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
@@ -362,26 +436,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
  
     const repeat = isRepeatRef.current;
     if (repeat) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.error("Playback prevented:", e));
+      if (globalAudio) {
+        globalAudio.currentTime = 0;
+        globalAudio.play().catch(e => console.error("Playback prevented:", e));
       }
       return;
     }
  
-    if (audioRef.current && audioRef.current.currentTime > 3) {
-      audioRef.current.currentTime = 0;
+    if (globalAudio && globalAudio.currentTime > 3) {
+      globalAudio.currentTime = 0;
       return;
     }
     const currentIdx = currentIndexRef.current;
     const prevIndex = currentIdx === 0 ? currentQueue.length - 1 : currentIdx - 1;
     const prevSong = currentQueue[prevIndex];
  
-    if (audioRef.current && prevSong) {
+    if (globalAudio && prevSong) {
       loadedSongUrlRef.current = prevSong.url;
-      audioRef.current.src = getSecureUrl(prevSong.url);
-      audioRef.current.load(); // Force immediate load in iOS Safari to prevent background audio suspension
-      audioRef.current.play().catch(e => console.error("Playback prevented in playPrevious:", e));
+      globalAudio.src = getSecureUrl(prevSong.url);
+      globalAudio.load(); // Force immediate load in iOS Safari to prevent background audio suspension
+      globalAudio.play().catch(e => console.error("Playback prevented in playPrevious:", e));
       
       updateMediaSessionMetadata(prevSong);
       if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
@@ -403,22 +477,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [playPrevious]);
 
   const seek = (time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
+    if (globalAudio) {
+      globalAudio.currentTime = time;
       setProgress(time);
     }
   };
-
+ 
   useEffect(() => {
-    if (!audioDOMRef.current) return;
-
-    // Initialize audio element reference to the DOM element
-    audioRef.current = audioDOMRef.current;
-    audioRef.current.volume = volume;
-    audioRef.current.preload = 'auto'; // Support preloading metadata on mobile background
-
-    const audio = audioRef.current;
-
+    const audio = globalAudio;
+    if (!audio) return;
+ 
+    audio.volume = volume;
+    audio.preload = 'auto';
+ 
     const handleTimeUpdate = () => {
       setProgress(audio.currentTime);
       
@@ -435,54 +506,53 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }
       }
     };
-
+ 
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
     };
-
+ 
     const handleEnded = () => {
+      console.log("[AudioContext] Song ended naturally. Advancing to next...");
       playNextRef.current();
     };
-
+ 
     const handleNativePlay = () => {
       setIsPlaying(true);
     };
-
+ 
     const handleNativePause = () => {
       setIsPlaying(false);
     };
-
+ 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handleNativePlay);
     audio.addEventListener('pause', handleNativePause);
-
+ 
     // Register Media Session action handlers ONCE on mount
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       const actions: [MediaSessionAction, () => void][] = [
         ['play', () => {
           setIsPlaying(true);
-          if (audioRef.current) {
-            audioRef.current.play().catch(e => console.error("Playback prevented on lock screen play:", e));
-          }
-          if ('mediaSession' in navigator) {
-            navigator.mediaSession.playbackState = 'playing';
-          }
+          audio.play().catch(e => console.error("Playback prevented on lock screen play:", e));
+          navigator.mediaSession.playbackState = 'playing';
         }],
         ['pause', () => {
           setIsPlaying(false);
-          if (audioRef.current) {
-            audioRef.current.pause();
-          }
-          if ('mediaSession' in navigator) {
-            navigator.mediaSession.playbackState = 'paused';
-          }
+          audio.pause();
+          navigator.mediaSession.playbackState = 'paused';
         }],
-        ['nexttrack', () => playNextRef.current()],
-        ['previoustrack', () => playPreviousRef.current()]
+        ['nexttrack', () => {
+          console.log("[AudioContext] Native media nexttrack signal received.");
+          playNextRef.current();
+        }],
+        ['previoustrack', () => {
+          console.log("[AudioContext] Native media previoustrack signal received.");
+          playPreviousRef.current();
+        }]
       ];
-
+ 
       actions.forEach(([action, handler]) => {
         try {
           navigator.mediaSession.setActionHandler(action, handler);
@@ -490,7 +560,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           console.warn(`Media Session action "${action}" is not supported:`, error);
         }
       });
-
+ 
       try {
         navigator.mediaSession.setActionHandler('seekto', (details) => {
           if (details.seekTime !== undefined) {
@@ -501,7 +571,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         console.warn('Media Session seekto is not supported:', error);
       }
     }
-
+ 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -510,6 +580,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener('pause', handleNativePause);
     };
   }, []);
+
+  // Safety watchdog loop to prevent background suspension and track-transition deadlocks
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const watchdog = setInterval(() => {
+      const audio = globalAudio;
+      if (!audio || !isPlayingRef.current || !currentSong) return;
+
+      // Watchdog Case 1: Audio naturally ended but ended listener was skipped (OS background throttle)
+      const hasSongEnded = audio.ended || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.5);
+      if (hasSongEnded) {
+        console.warn("[Watchdog] Song tail/ended detected but transition didn't execute. Programmatically forcing playNext...");
+        playNextRef.current();
+        return;
+      }
+
+      // Watchdog Case 2: React isPlaying state is active but audio is natively paused (OS battery optimization/focus loss)
+      if (audio.paused && !audio.seeking) {
+        console.log("[Watchdog] Audio is natively paused despite active state. Recovering audio focus...");
+        audio.play().catch(e => {
+          console.error("[Watchdog] Focus recovery play failed:", e);
+          setIsPlaying(false);
+        });
+      }
+    }, 2000);
+
+    return () => clearInterval(watchdog);
+  }, [currentSong]);
 
   // Sync state to Media Session playbackState only
   useEffect(() => {
@@ -529,6 +628,26 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       
       // Auto-add to recently played songs
       addSongToRecentlyPlayed(currentSong);
+
+      // If native platform, update native foreground service notification
+      if (Capacitor.isNativePlatform()) {
+        import('@anuradev/capacitor-background-mode').then(({ BackgroundMode }) => {
+          try {
+            BackgroundMode.updateNotification({
+              title: currentSong.title,
+              text: currentSong.artist,
+              icon: 'icon',
+              color: '#FBBF24',
+              hidden: false,
+              bigText: true
+            });
+          } catch (e) {
+            console.error("Failed to update native background notification:", e);
+          }
+        }).catch(err => {
+          console.error("Failed to load @anuradev/capacitor-background-mode inside currentSong useEffect:", err);
+        });
+      }
     }
   }, [currentSong]);
 
@@ -542,8 +661,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const changeVolume = (val: number) => {
     const newVolume = Math.max(0, Math.min(1, val));
     setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
+    if (globalAudio) {
+      globalAudio.volume = newVolume;
     }
   };
 
@@ -676,6 +795,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     showToast(`Added to ${playlist.title}`);
   };
 
+  const toggleLibraryAlbum = (albumId: string) => {
+    if (!user) {
+      showToast("Please log in to add albums to your library");
+      return;
+    }
+    
+    setLibraryAlbums(prev => {
+      const isAdded = prev.includes(albumId);
+      let next: string[];
+      if (isAdded) {
+        next = prev.filter(id => id !== albumId);
+        showToast("Removed from library");
+      } else {
+        next = [...prev, albumId];
+        showToast("Added to library");
+      }
+      persistLibraryAlbums(next);
+      return next;
+    });
+  };
+
   const toggleShuffle = () => setIsShuffle(!isShuffle);
   const toggleRepeat = () => setIsRepeat(!isRepeat);
 
@@ -695,6 +835,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       changeVolume,
       likedSongs,
       toggleLikedSong,
+      libraryAlbums,
+      toggleLibraryAlbum,
       customPlaylists,
       createPlaylist,
       addSongToPlaylist,
@@ -711,7 +853,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       toastAction
     }}>
       {children}
-      <audio ref={audioDOMRef} style={{ display: 'none' }} preload="auto" />
     </AudioContext.Provider>
   );
 }

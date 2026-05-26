@@ -282,6 +282,8 @@
   transition: background-color 0.3s;
   cursor: pointer;
   position: relative;
+  min-width: 0;
+  width: 100%;
 }
 
 .songCardSmall:hover {
@@ -295,11 +297,14 @@
   object-fit: cover;
   border-top-left-radius: 6px;
   border-bottom-left-radius: 6px;
+  flex-shrink: 0;
 }
 
 .songCardDetails {
   padding: 0 16px;
   flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .cardActions {
@@ -409,6 +414,45 @@
   transform: translateY(0);
 }
 
+.albumLibraryBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.albumCard:hover .albumLibraryBtn {
+  opacity: 1;
+}
+
+.albumLibraryBtn.added {
+  opacity: 1;
+  background-color: rgba(245, 166, 35, 0.2);
+  border-color: var(--accent-color-gold);
+  color: var(--accent-color-gold);
+}
+
+.albumLibraryBtn:hover {
+  transform: scale(1.1);
+  background-color: var(--accent-color-gold);
+  color: var(--bg-primary);
+  border-color: var(--accent-color-gold);
+}
+
 .albumTitle {
   font-size: 16px;
   font-weight: 600;
@@ -468,6 +512,8 @@
   
   .songCardDetails {
     padding: 12px;
+    width: 100%;
+    min-width: 0;
   }
   
   .playOverlay {
@@ -477,5 +523,9 @@
   .albumGrid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 16px;
+  }
+
+  .albumLibraryBtn {
+    opacity: 0.8 !important; /* Always show overlay slightly on mobile since there is no hover */
   }
 }

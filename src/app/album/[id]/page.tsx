@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Play, Heart, Plus } from "lucide-react";
+import { Play, Heart, Plus, Check } from "lucide-react";
 import { useAudio, Song } from "@/context/AudioContext";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
@@ -11,7 +11,7 @@ import styles from "../../page.module.css";
 export default function AlbumPage() {
   const params = useParams();
   const id = params.id as string;
-  const { playPlaylist, likedSongs, toggleLikedSong } = useAudio();
+  const { playPlaylist, likedSongs, toggleLikedSong, libraryAlbums, toggleLibraryAlbum } = useAudio();
   const [album, setAlbum] = useState<any>(null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +91,14 @@ export default function AlbumPage() {
                 disabled={songs.length === 0}
               >
                 <Play fill="currentColor" size={20} /> Play
+              </button>
+              <button 
+                className={styles.secondaryButton} 
+                onClick={() => toggleLibraryAlbum(album.id.toString())}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                {libraryAlbums.includes(album.id.toString()) ? <Check size={20} style={{ color: 'var(--accent-color-gold)' }} /> : <Plus size={20} />}
+                {libraryAlbums.includes(album.id.toString()) ? 'Saved' : 'Save to Library'}
               </button>
             </div>
           </div>

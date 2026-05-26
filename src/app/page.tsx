@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Play, Heart, Plus, Search as SearchIcon, Pause, ListMusic } from "lucide-react";
+import { Play, Heart, Plus, Check, Search as SearchIcon, Pause, ListMusic } from "lucide-react";
 import styles from "./page.module.css";
 import { useAudio, Song } from "@/context/AudioContext";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,7 @@ interface Album {
 }
 
 export default function Home() {
-  const { playPlaylist, likedSongs, toggleLikedSong, currentSong, isPlaying, togglePlayPause, recentlyPlayed } = useAudio();
+  const { playPlaylist, likedSongs, toggleLikedSong, currentSong, isPlaying, togglePlayPause, recentlyPlayed, libraryAlbums, toggleLibraryAlbum } = useAudio();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [featuredAlbum, setFeaturedAlbum] = useState<Album | null>(null);
   const [fallbackSongs, setFallbackSongs] = useState<Song[]>([]);
@@ -347,6 +347,17 @@ export default function Home() {
                       router.push(`/album/${album.id}`);
                     }}>
                       <Play fill="currentColor" size={24} />
+                    </button>
+                    <button 
+                      className={`${styles.albumLibraryBtn} ${libraryAlbums.includes(album.id.toString()) ? styles.added : ''}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleLibraryAlbum(album.id.toString());
+                      }}
+                      title={libraryAlbums.includes(album.id.toString()) ? "Remove from Library" : "Add to Library"}
+                    >
+                      {libraryAlbums.includes(album.id.toString()) ? <Check size={18} /> : <Plus size={18} />}
                     </button>
                   </div>
                   <div className={`${styles.albumTitle} truncate`}>{album.title}</div>
