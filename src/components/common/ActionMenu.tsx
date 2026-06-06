@@ -50,7 +50,7 @@ export default function ActionMenu({ song, isLiked, className }: ActionMenuProps
               setIsOpen(false);
             }}
           >
-            <Heart size={16} fill={isLiked ? "var(--accent-color-gold)" : "none"} color={isLiked ? "var(--accent-color-gold)" : "currentColor"} />
+            <Heart size={16} fill={isLiked ? "#ff4444" : "none"} color={isLiked ? "#ff4444" : "currentColor"} />
             <span>{isLiked ? 'Unlike' : 'Like'}</span>
           </button>
 

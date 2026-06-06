@@ -158,7 +158,7 @@ function PlaylistContent() {
 
 export default function PlaylistPage() {
   return (
-    <Suspense fallback={<AALoader />}>
+    <Suspense fallback={null}>
       <PlaylistContent />
     </Suspense>
   );

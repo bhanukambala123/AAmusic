@@ -394,7 +394,7 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
                 className={`${styles.fsActionBtn} ${isLiked ? styles.fsLikedActive : ''}`}
                 onClick={() => toggleLikedSong(currentSong.id.toString())}
               >
-                <Heart size={24} fill={isLiked ? "#ff4444" : "none"} />
+                <Heart size={24} fill={isLiked ? "#ff4444" : "none"} color={isLiked ? "#ff4444" : "currentColor"} />
               </button>
               <div className={styles.fsActionMenuWrapper}>
                 <ActionMenu song={currentSong} isLiked={isLiked} />

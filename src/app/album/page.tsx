@@ -145,7 +145,7 @@ function AlbumContent() {
 
 export default function AlbumPage() {
   return (
-    <Suspense fallback={<AALoader />}>
+    <Suspense fallback={null}>
       <AlbumContent />
     </Suspense>
   );

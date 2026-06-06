@@ -109,9 +109,10 @@ export default function LikedSongsPage() {
                   <div style={{ fontWeight: 'bold' }}>{song.title}</div>
                   <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{song.artist}</div>
                 </div>
-                <div style={{ marginRight: '16px', color: '#1db954' }}>
+                <div style={{ marginRight: '16px', color: '#ff4444' }}>
                    <Heart 
-                     fill="#1db954" 
+                     fill="#ff4444" 
+                     stroke="#ff4444"
                      size={18} 
                      onClick={(e) => {
                        e.stopPropagation();

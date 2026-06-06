@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# APK (too large for GitHub - 100MB limit)
+public/AAmusic.apk
+*.apk

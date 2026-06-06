@@ -11,7 +11,6 @@ import MusicPlayer from "./MusicPlayer";
 import styles from "./layout.module.css";
 import { useAuth } from "@/context/AuthContext";
 import SplashScreen from "../common/SplashScreen";
-import GlobalLoader from "../common/GlobalLoader";
 import Toast from "../common/Toast";
 
 import UpdatePrompt from "../common/UpdatePrompt";
@@ -20,7 +19,6 @@ import InstallPrompt from "../common/InstallPrompt";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMobile, setIsMobile] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
   const [isOutdatedWrapper, setIsOutdatedWrapper] = useState(false);
 
   useEffect(() => {
@@ -34,15 +32,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }, []);
   const pathname = usePathname();
   const { user, role, avatarUrl, username } = useAuth();
-
-  useEffect(() => {
-    // Skip loader on first mount (splash screen handles it)
-    if (showSplash) return;
-
-    setIsNavigating(true);
-    const timer = setTimeout(() => setIsNavigating(false), 800);
-    return () => clearTimeout(timer);
-  }, [pathname]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -99,7 +88,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-      {isNavigating && <GlobalLoader />}
       <Toast />
       <UpdatePrompt />
       <InstallPrompt />
