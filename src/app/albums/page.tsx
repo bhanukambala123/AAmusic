@@ -6,6 +6,7 @@ import { Play, Disc, Plus, Check } from "lucide-react";
 import styles from "../page.module.css";
 import { supabase } from "@/lib/supabase";
 import { useAudio } from "@/context/AudioContext";
+import AALoader from "@/components/common/AALoader";
 
 interface Album {
   id: string;
@@ -45,7 +46,7 @@ export default function AlbumsPage() {
       </header>
 
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)', padding: '20px' }}>Loading albums...</div>
+        <AALoader />
       ) : albums.length > 0 ? (
         <div className={styles.albumGrid}>
           {albums.map((album) => (

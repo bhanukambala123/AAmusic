@@ -17,6 +17,15 @@ const formatTime = (timeInSeconds: number) => {
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 };
 
+const PlayingVisualizer = ({ isPlaying }: { isPlaying: boolean }) => (
+  <div className={`${styles.equalizer} ${!isPlaying ? styles.paused : ''}`} aria-hidden="true">
+    <div className={styles.equalizerBar}></div>
+    <div className={styles.equalizerBar}></div>
+    <div className={styles.equalizerBar}></div>
+    <div className={styles.equalizerBar}></div>
+  </div>
+);
+
 export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
   const {
     currentSong,
@@ -150,7 +159,11 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
   return (
     <div 
       className={`${styles.playerContainer} ${isMobile ? styles.mobilePadding : ''} ${showFullScreen ? styles.fullScreenActive : ''}`}
-      onClick={() => {
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('a') || target.closest(`.${styles.queueOverlay}`)) {
+          return;
+        }
         if (isMobile && !showFullScreen) {
           setShowFullScreen(true);
         }
@@ -185,7 +198,10 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
             className={styles.coverArt}
           />
           <div className={styles.songDetails}>
-            <div className={`${styles.songTitle} truncate`}>{currentSong.title}</div>
+            <div className={styles.songTitle} style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+              <span className="truncate" style={{ marginRight: '4px' }}>{currentSong.title}</span>
+              <PlayingVisualizer isPlaying={isPlaying} />
+            </div>
             <div className={`${styles.songArtist} truncate`}>{currentSong.artist}</div>
           </div>
         </div>
@@ -367,7 +383,10 @@ export default function MusicPlayer({ isMobile }: MusicPlayerProps) {
           {/* Song Info */}
           <div className={styles.fsSongInfo}>
             <div className={styles.fsSongDetails}>
-              <h2 className={styles.fsSongTitle}>{currentSong.title}</h2>
+              <h2 className={styles.fsSongTitle} style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                <span className="truncate" style={{ marginRight: '8px' }}>{currentSong.title}</span>
+                <PlayingVisualizer isPlaying={isPlaying} />
+              </h2>
               <p className={styles.fsSongArtist}>{currentSong.artist}</p>
             </div>
             <div className={styles.fsSongActions}>

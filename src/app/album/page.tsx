@@ -7,11 +7,13 @@ import { useAudio, Song } from "@/context/AudioContext";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
 import styles from "../page.module.css";
+import AALoader from "@/components/common/AALoader";
+import PlayingVisualizer from "@/components/common/PlayingVisualizer";
 
 function AlbumContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") as string;
-  const { playPlaylist, likedSongs, libraryAlbums, toggleLibraryAlbum } = useAudio();
+  const { playPlaylist, likedSongs, libraryAlbums, toggleLibraryAlbum, currentSong, isPlaying } = useAudio();
   const [album, setAlbum] = useState<any>(null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ function AlbumContent() {
   }, [id]);
 
   if (loading) {
-    return <div style={{ color: 'white', padding: '40px' }}>Loading album...</div>;
+    return <AALoader />;
   }
 
   if (!album) {
@@ -114,7 +116,13 @@ function AlbumContent() {
               const isLiked = likedSongs.includes(song.id.toString());
               return (
                 <div key={song.id} className={styles.songRow} onClick={() => playPlaylist(songs, index)}>
-                  <div className={styles.songIndex}>{index + 1}</div>
+                  <div className={styles.songIndex}>
+                    {currentSong?.id === song.id ? (
+                      <PlayingVisualizer isPlaying={isPlaying} />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
                   <div className={styles.rowDetails}>
                     <div className={styles.rowTitle}>{song.title}</div>
                     <div className={styles.rowArtist}>{song.artist}</div>
@@ -137,7 +145,7 @@ function AlbumContent() {
 
 export default function AlbumPage() {
   return (
-    <Suspense fallback={<div style={{ color: 'white', padding: '40px' }}>Loading...</div>}>
+    <Suspense fallback={<AALoader />}>
       <AlbumContent />
     </Suspense>
   );

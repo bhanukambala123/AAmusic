@@ -6,8 +6,11 @@ import { useAudio, Song } from "@/context/AudioContext";
 import { supabase } from "@/lib/supabase";
 import styles from "../page.module.css";
 
+import AALoader from "@/components/common/AALoader";
+import PlayingVisualizer from "@/components/common/PlayingVisualizer";
+
 export default function LikedSongsPage() {
-  const { playPlaylist, likedSongs, toggleLikedSong } = useAudio();
+  const { playPlaylist, likedSongs, toggleLikedSong, currentSong, isPlaying } = useAudio();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +48,7 @@ export default function LikedSongsPage() {
   }, [likedSongs]);
 
   if (loading) {
-    return <div style={{ color: 'white', padding: '40px' }}>Loading your liked songs...</div>;
+    return <AALoader />;
   }
 
   return (
@@ -95,7 +98,13 @@ export default function LikedSongsPage() {
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
               >
-                <div style={{ width: '40px', color: 'var(--text-secondary)' }}>{index + 1}</div>
+                <div style={{ width: '40px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
+                  {currentSong?.id === song.id ? (
+                    <PlayingVisualizer isPlaying={isPlaying} />
+                  ) : (
+                    index + 1
+                  )}
+                </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 'bold' }}>{song.title}</div>
                   <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{song.artist}</div>

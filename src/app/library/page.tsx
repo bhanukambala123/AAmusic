@@ -2,10 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Play, Heart, Disc } from "lucide-react";
+import { Play, Heart, Disc, Music } from "lucide-react";
 import styles from "./library.module.css";
+import pageStyles from "../page.module.css";
 import { useAudio } from "@/context/AudioContext";
 import { supabase } from "@/lib/supabase";
+import AALoader from "@/components/common/AALoader";
+import ActionMenu from "@/components/common/ActionMenu";
+import PlayingVisualizer from "@/components/common/PlayingVisualizer";
 
 const staticPlaylists = [
   { id: "liked-songs", title: "Liked Songs", count: "Your likes", image: "https://images.unsplash.com/photo-1513829096999-4978602297a7?auto=format&fit=crop&q=80&w=300", isLiked: true, route: "/liked-songs" },
@@ -13,9 +17,11 @@ const staticPlaylists = [
 
 export default function Library() {
   const [activeTab, setActiveTab] = useState("playlists");
-  const { customPlaylists, likedSongs, libraryAlbums } = useAudio();
+  const { customPlaylists, likedSongs, libraryAlbums, playPlaylist, currentSong, isPlaying } = useAudio();
   const [savedAlbums, setSavedAlbums] = useState<any[]>([]);
   const [loadingAlbums, setLoadingAlbums] = useState(false);
+  const [allSongs, setAllSongs] = useState<any[]>([]);
+  const [loadingSongs, setLoadingSongs] = useState(false);
 
   // Fetch albums when activeTab changes to 'albums'
   useEffect(() => {
@@ -41,6 +47,42 @@ export default function Library() {
 
     fetchLibraryAlbums();
   }, [activeTab, libraryAlbums]);
+
+  // Fetch all songs when activeTab changes to 'songs'
+  useEffect(() => {
+    if (activeTab !== 'songs') return;
+
+    async function fetchAllSongs() {
+      setLoadingSongs(true);
+      const { data, error } = await supabase
+        .from('songs')
+        .select(`
+          *,
+          albums (
+            title,
+            cover_url
+          )
+        `)
+        .order('title', { ascending: true });
+
+      if (data && !error) {
+        const formatted = data.map((song: any) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          duration: song.duration,
+          audio_url: song.audio_url,
+          url: song.audio_url,
+          albumTitle: song.albums?.title,
+          image: song.cover_url || song.albums?.cover_url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=150"
+        }));
+        setAllSongs(formatted);
+      }
+      setLoadingSongs(false);
+    }
+
+    fetchAllSongs();
+  }, [activeTab]);
 
   // Merge static playlists with custom playlists created by user
   const allPlaylists = [
@@ -78,16 +120,22 @@ export default function Library() {
           >
             Albums
           </button>
+          <button 
+            className={`${styles.tab} ${activeTab === 'songs' ? styles.activeTab : ''}`}
+            onClick={() => setActiveTab('songs')}
+          >
+            Songs
+          </button>
         </div>
       </header>
-
+ 
       <div className={styles.content}>
         {activeTab === 'playlists' ? (
           <div className={styles.grid}>
             {allPlaylists.map((playlist) => {
               const isDefaultImage = playlist.image && (playlist.image.includes('unsplash.com') || playlist.image === '/liked-songs.jpg');
               const showLetter = !playlist.isLiked && isDefaultImage;
-
+ 
               const cardContent = (
                 <div key={playlist.id} className={styles.card}>
                   <div className={styles.imageWrapper}>
@@ -123,7 +171,7 @@ export default function Library() {
                   <div className={styles.subtitle}>{playlist.count}</div>
                 </div>
               );
-
+ 
               return playlist.route ? (
                 <Link href={playlist.route} key={playlist.id} style={{ textDecoration: 'none' }}>
                   {cardContent}
@@ -131,10 +179,10 @@ export default function Library() {
               ) : cardContent;
             })}
           </div>
-        ) : (
+        ) : activeTab === 'albums' ? (
           /* Albums Tab Content */
           loadingAlbums ? (
-            <div style={{ color: 'var(--text-secondary)', padding: '20px' }}>Loading albums...</div>
+            <AALoader />
           ) : savedAlbums.length > 0 ? (
             <div className={styles.grid}>
               {savedAlbums.map((album) => (
@@ -156,6 +204,44 @@ export default function Library() {
             <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '60px' }}>
               <Disc size={64} style={{ opacity: 0.2, marginBottom: '20px' }} />
               <p>No saved albums found in your library.</p>
+            </div>
+          )
+        ) : (
+          /* Songs Tab Content */
+          loadingSongs ? (
+            <AALoader />
+          ) : allSongs.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
+              {allSongs.map((song, index) => {
+                const isLiked = likedSongs.includes(song.id.toString());
+                return (
+                  <div 
+                    key={song.id} 
+                    className={pageStyles.songRow} 
+                    onClick={() => playPlaylist(allSongs, index)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className={pageStyles.songIndex}>
+                      {currentSong?.id === song.id ? (
+                        <PlayingVisualizer isPlaying={isPlaying} />
+                      ) : (
+                        index + 1
+                      )}
+                    </div>
+                    <div className={pageStyles.rowDetails}>
+                      <div className={pageStyles.rowTitle}>{song.title}</div>
+                      <div className={pageStyles.rowArtist}>{song.artist} • {song.albumTitle || 'Single'}</div>
+                    </div>
+                    <div className={pageStyles.rowDuration}>{song.duration}</div>
+                    <ActionMenu song={song} isLiked={isLiked} className={pageStyles.rowActionMenu} />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '60px' }}>
+              <Music size={64} style={{ opacity: 0.2, marginBottom: '20px' }} />
+              <p>No songs found in the database.</p>
             </div>
           )
         )}

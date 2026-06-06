@@ -318,7 +318,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', user?.id);
 
       if (playlists && !playlistsError) {
-        const formattedPlaylists: CustomPlaylist[] = playlists.map(p => ({
+        const filteredPlaylists = playlists.filter(p => p.title !== '__device_session__');
+        const formattedPlaylists: CustomPlaylist[] = filteredPlaylists.map(p => ({
           id: p.id,
           title: p.title,
           category: p.cover_url || 'Love', // Using cover_url as category for now since schema didn't have it

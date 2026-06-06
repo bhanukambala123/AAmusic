@@ -7,11 +7,13 @@ import { useAudio, Song } from "@/context/AudioContext";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
 import styles from "../page.module.css";
+import AALoader from "@/components/common/AALoader";
+import PlayingVisualizer from "@/components/common/PlayingVisualizer";
 
 function PlaylistContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") as string;
-  const { customPlaylists, playPlaylist, likedSongs } = useAudio();
+  const { customPlaylists, playPlaylist, likedSongs, currentSong, isPlaying } = useAudio();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +70,7 @@ function PlaylistContent() {
 
   if (!playlist) {
     if (loading) {
-      return <div className={styles.container} style={{ color: '#fff' }}>Loading playlist...</div>;
+      return <AALoader />;
     }
     return <div className={styles.container} style={{ color: '#fff' }}>Playlist not found.</div>;
   }
@@ -117,14 +119,20 @@ function PlaylistContent() {
 
       <section className={styles.section}>
         {loading ? (
-          <p style={{ color: 'var(--text-secondary)' }}>Loading songs...</p>
+          <AALoader />
         ) : songs.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {songs.map((song, index) => {
               const isLiked = likedSongs.includes(song.id.toString());
               return (
                 <div key={song.id} className={styles.songRow} onClick={() => playPlaylist(songs, index)}>
-                  <div className={styles.songIndex}>{index + 1}</div>
+                  <div className={styles.songIndex}>
+                    {currentSong?.id === song.id ? (
+                      <PlayingVisualizer isPlaying={isPlaying} />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
                   <div className={styles.rowDetails}>
                     <div className={styles.rowTitle}>{song.title}</div>
                     <div className={styles.rowArtist}>{song.artist}</div>
@@ -150,7 +158,7 @@ function PlaylistContent() {
 
 export default function PlaylistPage() {
   return (
-    <Suspense fallback={<div style={{ color: 'white', padding: '40px' }}>Loading...</div>}>
+    <Suspense fallback={<AALoader />}>
       <PlaylistContent />
     </Suspense>
   );

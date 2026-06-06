@@ -8,6 +8,8 @@ import { useAudio, Song } from "@/context/AudioContext";
 import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/common/ActionMenu";
 import { supabase } from "@/lib/supabase";
+import AALoader from "@/components/common/AALoader";
+import PlayingVisualizer from "@/components/common/PlayingVisualizer";
 
 interface Album {
   id: string;
@@ -203,14 +205,20 @@ export default function Home() {
         <section className={styles.resultsSection}>
           <h2 className={styles.sectionTitle}>Search Results</h2>
           {searching ? (
-            <div style={{ color: 'var(--text-secondary)' }}>Searching...</div>
+            <AALoader />
           ) : searchResults.length > 0 ? (
             <div className={styles.songList}>
               {searchResults.map((song, index) => {
                 const isLiked = likedSongs.includes(song.id.toString());
                 return (
                   <div key={song.id} className={styles.songRow} onClick={() => playPlaylist(searchResults, index)}>
-                    <div className={styles.songIndex}>{index + 1}</div>
+                    <div className={styles.songIndex}>
+                      {currentSong?.id === song.id ? (
+                        <PlayingVisualizer isPlaying={isPlaying} />
+                      ) : (
+                        index + 1
+                      )}
+                    </div>
                     <img src={song.image} alt={song.title} className={styles.rowImage} />
                     <div className={styles.rowDetails}>
                       <div className={styles.rowTitle}>{song.title}</div>
