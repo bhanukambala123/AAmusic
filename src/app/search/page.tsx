@@ -163,12 +163,14 @@ export default function Search() {
                   >
                     <img src={item.image} alt={item.title} className={styles.rowImage} />
                     <div className={styles.rowDetails}>
-                      <div className={styles.rowTitle}>{item.title}</div>
+                      <div className={styles.rowTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{item.title}</span>
+                        {item.type === 'song' && currentSong?.id === item.id && <PlayingVisualizer isPlaying={isPlaying} />}
+                      </div>
                       <div className={styles.rowArtist}>
                         {item.type === 'song' ? item.artist : `Album • Released ${item.release_year}`}
                       </div>
                     </div>
-                    {item.type === 'song' && <div className={styles.rowDuration}>{item.duration}</div>}
                     <button 
                       className={styles.rowPlayBtn} 
                       style={{ opacity: 0, position: 'absolute', right: '56px' }}
@@ -232,10 +234,12 @@ export default function Search() {
                           </div>
                           <img src={song.image} alt={song.title} className={styles.rowImage} />
                           <div className={styles.rowDetails}>
-                            <div className={styles.rowTitle}>{song.title}</div>
+                            <div className={styles.rowTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>{song.title}</span>
+                              {currentSong?.id === song.id && <PlayingVisualizer isPlaying={isPlaying} />}
+                            </div>
                             <div className={styles.rowArtist}>{song.artist}</div>
                           </div>
-                          <div className={styles.rowDuration}>{song.duration}</div>
                           <button className={styles.rowPlayBtn}>
                             <Play fill="currentColor" size={20} />
                           </button>

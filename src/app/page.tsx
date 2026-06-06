@@ -221,10 +221,12 @@ export default function Home() {
                     </div>
                     <img src={song.image} alt={song.title} className={styles.rowImage} />
                     <div className={styles.rowDetails}>
-                      <div className={styles.rowTitle}>{song.title}</div>
+                      <div className={styles.rowTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{song.title}</span>
+                        {currentSong?.id === song.id && <PlayingVisualizer isPlaying={isPlaying} />}
+                      </div>
                       <div className={styles.rowArtist}>{song.artist}</div>
                     </div>
-                    <div className={styles.rowDuration}>{song.duration}</div>
                     <ActionMenu song={song} isLiked={isLiked} className={styles.rowActionMenu} />
                     <button className={styles.rowPlayBtn}>
                       <Play fill="currentColor" size={20} />
@@ -260,7 +262,10 @@ export default function Home() {
           >
             <div className={styles.featuredContent}>
               <span className={styles.badge} style={{ backgroundColor: 'var(--accent-color-gold)', color: '#000' }}>Now Playing</span>
-              <h1 className={styles.featuredTitle}>{currentSong.title}</h1>
+               <h1 className={styles.featuredTitle} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span>{currentSong.title}</span>
+                <PlayingVisualizer isPlaying={isPlaying} />
+              </h1>
               <p className={styles.featuredDesc}>
                 {currentSong.artist} {currentSong.albumTitle ? `• ${currentSong.albumTitle}` : ''}
               </p>
