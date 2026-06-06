@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { Capacitor } from '@capacitor/core';
+import { NativeAudio } from '@capgo/capacitor-native-audio';
 
 export interface Song {
   id: string | number;
@@ -89,7 +90,12 @@ const getSecureUrl = (url: string) => {
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgressState] = useState(0);
+  const progressRef = useRef<number>(0);
+  const setProgress = (val: number) => {
+    progressRef.current = val;
+    setProgressState(val);
+  };
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const { user } = useAuth();
@@ -279,7 +285,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setCurrentSong(null);
       setQueue([]);
       setIsPlaying(false);
-      if (globalAudio) {
+      if (Capacitor.isNativePlatform()) {
+        NativeAudio.stop({ assetId: 'currentTrack' }).catch(() => {});
+        NativeAudio.unload({ assetId: 'currentTrack' }).catch(() => {});
+      } else if (globalAudio) {
         globalAudio.pause();
         globalAudio.src = "";
       }
@@ -323,26 +332,68 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     fetchData();
   }, [user]);
 
+  const loadAndPlaySong = async (song: Song) => {
+    if (!song) return;
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        console.log("[AudioContext] Preparing native playback for song:", song.title);
+        // Stop and unload existing track
+        await NativeAudio.stop({ assetId: 'currentTrack' }).catch(() => {});
+        await NativeAudio.unload({ assetId: 'currentTrack' }).catch(() => {});
+
+        loadedSongUrlRef.current = song.url;
+
+        // Preload track natively
+        await NativeAudio.preload({
+          assetId: 'currentTrack',
+          assetPath: getSecureUrl(song.url),
+          isUrl: true,
+          audioChannelNum: 1,
+          notificationMetadata: {
+            title: song.title,
+            artist: song.artist,
+            album: song.albumTitle || 'AAmusic',
+            artworkUrl: getAbsoluteArtworkUrl(song.image)
+          }
+        });
+
+        // Try getting initial duration
+        const durationRes = await NativeAudio.getDuration({ assetId: 'currentTrack' }).catch(() => null);
+        if (durationRes && durationRes.duration > 0) {
+          setDuration(durationRes.duration);
+        } else {
+          setDuration(0);
+        }
+
+        // Start playing natively
+        await NativeAudio.play({ assetId: 'currentTrack' });
+        setIsPlaying(true);
+      } catch (error) {
+        console.error("Error playing native song:", error);
+        showToast("Error playing song");
+      }
+    } else if (globalAudio) {
+      loadedSongUrlRef.current = song.url;
+      globalAudio.src = getSecureUrl(song.url);
+      globalAudio.load();
+      globalAudio.play().catch(e => console.error("Playback prevented in loadAndPlaySong:", e));
+      setIsPlaying(true);
+    }
+
+    updateMediaSessionMetadata(song);
+    addSongToRecentlyPlayed(song);
+    setCurrentSong(song);
+  };
+
   const playSong = (song: Song) => {
     if (!user) {
       showToast("Please login to play music");
       return;
     }
-    if (globalAudio) {
-      loadedSongUrlRef.current = song.url;
-      globalAudio.src = getSecureUrl(song.url);
-      globalAudio.load();
-      globalAudio.play().catch(e => console.error("Playback prevented in playSong:", e));
-    }
-    updateMediaSessionMetadata(song);
-    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-      navigator.mediaSession.playbackState = 'playing';
-    }
     setQueue([song]);
     setCurrentIndex(0);
-    setCurrentSong(song);
-    addSongToRecentlyPlayed(song);
-    setIsPlaying(true);
+    loadAndPlaySong(song);
   };
 
   const playPlaylist = (songs: Song[], startIndex = 0) => {
@@ -351,24 +402,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (songs.length === 0) return;
-    const firstSong = songs[startIndex];
-    if (globalAudio && firstSong) {
-      loadedSongUrlRef.current = firstSong.url;
-      globalAudio.src = getSecureUrl(firstSong.url);
-      globalAudio.load();
-      globalAudio.play().catch(e => console.error("Playback prevented in playPlaylist:", e));
-    }
-    if (firstSong) {
-      updateMediaSessionMetadata(firstSong);
-      addSongToRecentlyPlayed(firstSong);
-    }
-    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-      navigator.mediaSession.playbackState = 'playing';
-    }
     setQueue(songs);
     setCurrentIndex(startIndex);
-    setCurrentSong(songs[startIndex]);
-    setIsPlaying(true);
+    loadAndPlaySong(songs[startIndex]);
   };
 
   const togglePlayPause = () => {
@@ -378,14 +414,22 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
     if (!currentSong) return;
     const nextPlayingState = !isPlaying;
-    if (globalAudio) {
+    
+    if (Capacitor.isNativePlatform()) {
+      if (nextPlayingState) {
+        NativeAudio.resume({ assetId: 'currentTrack' }).catch(e => console.error("Error resuming native audio:", e));
+      } else {
+        NativeAudio.pause({ assetId: 'currentTrack' }).catch(e => console.error("Error pausing native audio:", e));
+      }
+      setIsPlaying(nextPlayingState);
+    } else if (globalAudio) {
       if (nextPlayingState) {
         globalAudio.play().catch(e => console.error("Playback prevented in togglePlayPause:", e));
       } else {
         globalAudio.pause();
       }
+      setIsPlaying(nextPlayingState);
     }
-    setIsPlaying(nextPlayingState);
   };
 
   const playNext = useCallback(() => {
@@ -398,7 +442,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     const shuffle = isShuffleRef.current;
     
     if (repeat) {
-      if (globalAudio) {
+      if (Capacitor.isNativePlatform()) {
+        NativeAudio.setCurrentTime({ assetId: 'currentTrack', time: 0 }).catch(() => {});
+        NativeAudio.play({ assetId: 'currentTrack' }).catch(() => {});
+      } else if (globalAudio) {
         globalAudio.currentTime = 0;
         globalAudio.play().catch(e => console.error("Playback prevented:", e));
       }
@@ -413,21 +460,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
  
     const nextSong = currentQueue[nextIndex];
-    if (globalAudio && nextSong) {
-      loadedSongUrlRef.current = nextSong.url;
-      globalAudio.src = getSecureUrl(nextSong.url);
-      globalAudio.load(); // Force immediate load in iOS Safari to prevent background audio suspension
-      globalAudio.play().catch(e => console.error("Playback prevented in playNext:", e));
-      
-      updateMediaSessionMetadata(nextSong);
-      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-      }
+    if (nextSong) {
+      loadAndPlaySong(nextSong);
     }
  
     setCurrentIndex(nextIndex);
-    setCurrentSong(nextSong);
-    setIsPlaying(true);
   }, []);
  
   const playPrevious = useCallback(() => {
@@ -436,36 +473,34 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
  
     const repeat = isRepeatRef.current;
     if (repeat) {
-      if (globalAudio) {
+      if (Capacitor.isNativePlatform()) {
+        NativeAudio.setCurrentTime({ assetId: 'currentTrack', time: 0 }).catch(() => {});
+        NativeAudio.play({ assetId: 'currentTrack' }).catch(() => {});
+      } else if (globalAudio) {
         globalAudio.currentTime = 0;
         globalAudio.play().catch(e => console.error("Playback prevented:", e));
       }
       return;
     }
  
-    if (globalAudio && globalAudio.currentTime > 3) {
-      globalAudio.currentTime = 0;
+    if (progressRef.current > 3) {
+      if (Capacitor.isNativePlatform()) {
+        NativeAudio.setCurrentTime({ assetId: 'currentTrack', time: 0 }).catch(() => {});
+      } else if (globalAudio) {
+        globalAudio.currentTime = 0;
+      }
+      setProgress(0);
       return;
     }
     const currentIdx = currentIndexRef.current;
     const prevIndex = currentIdx === 0 ? currentQueue.length - 1 : currentIdx - 1;
     const prevSong = currentQueue[prevIndex];
  
-    if (globalAudio && prevSong) {
-      loadedSongUrlRef.current = prevSong.url;
-      globalAudio.src = getSecureUrl(prevSong.url);
-      globalAudio.load(); // Force immediate load in iOS Safari to prevent background audio suspension
-      globalAudio.play().catch(e => console.error("Playback prevented in playPrevious:", e));
-      
-      updateMediaSessionMetadata(prevSong);
-      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-      }
+    if (prevSong) {
+      loadAndPlaySong(prevSong);
     }
  
     setCurrentIndex(prevIndex);
-    setCurrentSong(prevSong);
-    setIsPlaying(true);
   }, []);
 
   useEffect(() => {
@@ -477,7 +512,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [playPrevious]);
 
   const seek = (time: number) => {
-    if (globalAudio) {
+    if (Capacitor.isNativePlatform()) {
+      NativeAudio.setCurrentTime({ assetId: 'currentTrack', time: time }).catch(e => {
+        console.error("Error seeking native audio:", e);
+      });
+      setProgress(time);
+    } else if (globalAudio) {
       globalAudio.currentTime = time;
       setProgress(time);
     }
@@ -524,23 +564,82 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setIsPlaying(false);
     };
  
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('play', handleNativePlay);
-    audio.addEventListener('pause', handleNativePause);
+    // Register HTML5 listeners only on standard web browser
+    if (!Capacitor.isNativePlatform()) {
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('play', handleNativePlay);
+      audio.addEventListener('pause', handleNativePause);
+    }
+
+    // Configure and setup Native listeners
+    let completeListener: any = null;
+    let timeListener: any = null;
+    let stateListener: any = null;
+
+    if (Capacitor.isNativePlatform()) {
+      // Configure Native Audio Plugin
+      NativeAudio.configure({
+        background: true,
+        showNotification: true,
+        backgroundPlayback: true,
+        focus: true
+      }).then(() => {
+        console.log("[AudioContext] NativeAudio configured successfully.");
+      }).catch(e => {
+        console.error("[AudioContext] NativeAudio configuration failed:", e);
+      });
+
+      // 1. Listen for track ending
+      NativeAudio.addListener('complete', (event: { assetId: string }) => {
+        console.log("[AudioContext] Native playback complete event:", event);
+        if (event.assetId === 'currentTrack') {
+          playNextRef.current();
+        }
+      }).then(handle => {
+        completeListener = handle;
+      });
+
+      // 2. Listen for current playback time updates (emits every 100ms)
+      NativeAudio.addListener('currentTime', (data: { currentTime: number; assetId: string }) => {
+        if (data.assetId === 'currentTrack') {
+          setProgress(data.currentTime);
+        }
+      }).then(handle => {
+        timeListener = handle;
+      });
+
+      // 3. Listen for media notification / lock-screen play/pause buttons
+      NativeAudio.addListener('playbackState', (state: { assetId: string; isPlaying: boolean; state: string; reason: string }) => {
+        console.log("[AudioContext] Native playbackState event:", state);
+        if (state.assetId === 'currentTrack') {
+          setIsPlaying(state.isPlaying);
+        }
+      }).then(handle => {
+        stateListener = handle;
+      });
+    }
  
     // Register Media Session action handlers ONCE on mount
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
       const actions: [MediaSessionAction, () => void][] = [
         ['play', () => {
           setIsPlaying(true);
-          audio.play().catch(e => console.error("Playback prevented on lock screen play:", e));
+          if (Capacitor.isNativePlatform()) {
+            NativeAudio.resume({ assetId: 'currentTrack' }).catch(() => {});
+          } else {
+            audio.play().catch(e => console.error("Playback prevented on lock screen play:", e));
+          }
           navigator.mediaSession.playbackState = 'playing';
         }],
         ['pause', () => {
           setIsPlaying(false);
-          audio.pause();
+          if (Capacitor.isNativePlatform()) {
+            NativeAudio.pause({ assetId: 'currentTrack' }).catch(() => {});
+          } else {
+            audio.pause();
+          }
           navigator.mediaSession.playbackState = 'paused';
         }],
         ['nexttrack', () => {
@@ -573,11 +672,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
  
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('play', handleNativePlay);
-      audio.removeEventListener('pause', handleNativePause);
+      if (!Capacitor.isNativePlatform()) {
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener('ended', handleEnded);
+        audio.removeEventListener('play', handleNativePlay);
+        audio.removeEventListener('pause', handleNativePause);
+      }
+      if (completeListener) completeListener.remove();
+      if (timeListener) timeListener.remove();
+      if (stateListener) stateListener.remove();
     };
   }, []);
 
@@ -587,23 +691,40 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     const watchdog = setInterval(() => {
       const audio = globalAudio;
-      if (!audio || !isPlayingRef.current || !currentSong) return;
+      if (!isPlayingRef.current || !currentSong) return;
 
-      // Watchdog Case 1: Audio naturally ended but ended listener was skipped (OS background throttle)
-      const hasSongEnded = audio.ended || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.5);
-      if (hasSongEnded) {
-        console.warn("[Watchdog] Song tail/ended detected but transition didn't execute. Programmatically forcing playNext...");
-        playNextRef.current();
-        return;
-      }
+      if (!Capacitor.isNativePlatform()) {
+        if (!audio) return;
+        // Watchdog Case 1: Audio naturally ended but ended listener was skipped (OS background throttle)
+        const hasSongEnded = audio.ended || (audio.duration > 0 && audio.currentTime >= audio.duration - 0.5);
+        if (hasSongEnded) {
+          console.warn("[Watchdog] Song tail/ended detected but transition didn't execute. Programmatically forcing playNext...");
+          playNextRef.current();
+          return;
+        }
 
-      // Watchdog Case 2: React isPlaying state is active but audio is natively paused (OS battery optimization/focus loss)
-      if (audio.paused && !audio.seeking) {
-        console.log("[Watchdog] Audio is natively paused despite active state. Recovering audio focus...");
-        audio.play().catch(e => {
-          console.error("[Watchdog] Focus recovery play failed:", e);
-          setIsPlaying(false);
-        });
+        // Watchdog Case 2: React isPlaying state is active but audio is natively paused (OS battery optimization/focus loss)
+        if (audio.paused && !audio.seeking) {
+          console.log("[Watchdog] Audio is natively paused despite active state. Recovering audio focus...");
+          audio.play().catch(e => {
+            console.error("[Watchdog] Focus recovery play failed:", e);
+            setIsPlaying(false);
+          });
+        }
+      } else {
+        // Watchdog Case 3: Native platform sanity checks
+        NativeAudio.isPlaying({ assetId: 'currentTrack' }).then(res => {
+          if (res && res.isPlaying && !isPlayingRef.current) {
+            console.log("[Watchdog] Native audio is active but context is paused. Syncing state...");
+            setIsPlaying(true);
+          }
+        }).catch(() => {});
+
+        NativeAudio.getDuration({ assetId: 'currentTrack' }).then(res => {
+          if (res && res.duration > 0) {
+            setDuration(res.duration);
+          }
+        }).catch(() => {});
       }
     }, 2000);
 
@@ -628,26 +749,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       
       // Auto-add to recently played songs
       addSongToRecentlyPlayed(currentSong);
-
-      // If native platform, update native foreground service notification
-      if (Capacitor.isNativePlatform()) {
-        import('@anuradev/capacitor-background-mode').then(({ BackgroundMode }) => {
-          try {
-            BackgroundMode.updateNotification({
-              title: currentSong.title,
-              text: currentSong.artist,
-              icon: 'icon',
-              color: '#FBBF24',
-              hidden: false,
-              bigText: true
-            });
-          } catch (e) {
-            console.error("Failed to update native background notification:", e);
-          }
-        }).catch(err => {
-          console.error("Failed to load @anuradev/capacitor-background-mode inside currentSong useEffect:", err);
-        });
-      }
     }
   }, [currentSong]);
 
@@ -661,7 +762,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const changeVolume = (val: number) => {
     const newVolume = Math.max(0, Math.min(1, val));
     setVolume(newVolume);
-    if (globalAudio) {
+    if (Capacitor.isNativePlatform()) {
+      NativeAudio.setVolume({ assetId: 'currentTrack', volume: newVolume }).catch(e => {
+        console.error("Error setting native volume:", e);
+      });
+    } else if (globalAudio) {
       globalAudio.volume = newVolume;
     }
   };
